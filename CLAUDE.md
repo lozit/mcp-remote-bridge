@@ -96,6 +96,12 @@ If you also use [superpowers](https://github.com/obra/superpowers), there is **n
 
 Conventional Commits: `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`. Small and atomic. Don't mix refactor and feature.
 
+### Language
+
+**Everything written into this repo is in English** — docs, code, identifiers, comments,
+commit messages, ADRs, specs, PR descriptions. No exception, including files nobody but the
+maintainer will read. This holds whatever language the surrounding conversation is in.
+
 ### Code
 
 **Go 1.24** — distributed as a single static binary (`brew`, download-and-run, no runtime).
