@@ -140,6 +140,30 @@ even when it works.
 **And the non-goal that will be eroded if you let it**: this is plumbing, **not a gateway**.
 No UI, no filtering, no skills, no aggregation — however reasonable the request sounds.
 
+## Invariants
+
+What the autonomous loop (`loop/`) must **never** break — the verifier checks the diff against this
+section every iteration, and the maker treats a would-be violation as a `BLOCKED`, not a judgement
+call.
+
+- **The quality suite stays green**: `gofmt -l .` prints nothing, `go vet ./...` and `go test ./...`
+  pass. A red suite is never "fixed" by weakening a test.
+- **Never edit an acceptance test to fit the implementation.** The test is the frozen spec. If it
+  looks wrong, that is a `BLOCKED`, not an edit.
+- **No secret value anywhere it can be read**: not in a config file, a service file (plists are
+  world-readable), a command line, a process environment written to disk, or a log. Secrets travel as
+  references and are resolved at launch, immediately before `exec`.
+- **The proxy binds `127.0.0.1` only** — never `0.0.0.0`. This is a security control, not a default.
+- **The primitive stays free of OS knowledge.** `internal/bridge` never shells out to `launchctl`,
+  `cloudflared` or `security`; that lives inside a seam implementation.
+- **The three seam interfaces** (`ServiceManager`, `Exposer`, `SecretSource`) are not changed without
+  an ADR. Adding an implementation is free; changing the contract is not.
+- **`HealthReport` reports probes actually run**, never inferred from a successful write. A check that
+  cannot fail is forbidden.
+- **No edit outside the task's stated scope**, and no dependency added without an ADR.
+
+> **Loop blocked?** On a parked decision, triage `loop/blocked.md` (re-decompose / decide → ADR / fix interactively) — see `loop/README.md`.
+
 ## Posture
 
 How I want you to work with me — not just *what* to do.

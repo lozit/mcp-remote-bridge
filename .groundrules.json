@@ -58,8 +58,8 @@
   },
   "appliedPractices": [],
   "loop": {
-    "scaffolded": false,
-    "at": null
+    "scaffolded": true,
+    "at": "2026-08-20"
   },
   "policies": {
     "noAiAttribution": false
@@ -82,14 +82,20 @@
     "docs/media/README.md",
     "intake/README.md",
     "intake/INTENT.md",
-    ".groundrules.json"
+    ".groundrules.json",
+    "loop/README.md",
+    "loop/maker.md",
+    "loop/verifier.md",
+    "loop/LOOP.md",
+    "loop/run-loop.sh",
+    "loop/backlog.md",
+    "loop/.gitignore"
   ],
   "skippedFiles": {
     "README.md": "pre-existing, unsigned (foreign) - richer than the template, kept as-is",
     ".gitignore": "pre-existing, unsigned (foreign) - already Go-appropriate, kept as-is",
     "docs/DATA_MODEL.md": "not selected - no database",
     "docs/DESIGN_SYSTEM.md": "not selected - no UI",
-    "docs/I18N.md": "not selected - not multilingual",
-    "loop/": "loop scaffolding declined at bootstrap"
+    "docs/I18N.md": "not selected - not multilingual"
   }
 }
