@@ -36,10 +36,17 @@ seams plus `Entry` / `HealthReport` are declared with stubs returning
       injected resolver, which is an unmade design decision); `service_loaded` delegates to
       `ServiceManager.Status`, so a loop would have to author its own fake — writer = maker.
       Remaining probes for `HealthReport`: `hostname_resolves`, `hostname_responds`,
-      `service_loaded`
+      `service_loaded`.
+      **`service_loaded` is one decision away from being loop-safe**: it is structurally clean
+      (call `ServiceManager.Status`, map to a `Check`, testable against a fake), but what should
+      it report when the service is `Loaded` but not `Running` — crashed, or throttled after a
+      failure? Decide that and it can be looped.
 - [ ] `[supervised]` — *remaining on the probe: attach Cloudflare Access credentials (the
       `decorate` hook exists and is unused), and exercise it through a real hostname rather than
       loopback.* The `mcp_responds` probe itself is **done**.
+- [x] Realize #2: plist generation partitioned to `[loop]` with a red acceptance test frozen in
+      `internal/launchd/plist_test.go`; one PLAN task found already done, one absorbed into that
+      test (2026-08-21)
 - [x] `__launch` + `internal/launcher` — **done**, with mutation-verified argv invariants.
 - [x] `KeychainSecretSource` — **done** (ADR 0004: `-g`, not `-w`).
 - [x] Config parser — **done** (ADR 0005). Strict TOML, every problem reported at once, secret
@@ -47,16 +54,15 @@ seams plus `Entry` / `HealthReport` are declared with stubs returning
 - [x] `__launch` — **done**. Resolves secrets, builds a minimal explicit environment,
       `syscall.Exec`s mcp-proxy with `--pass-environment`. Proven end to end: the secret reaches
       the MCP's environment **and** appears in no process `argv` (checked with `ps`).
-- [ ] `[supervised]` — the plist half of the secret path: assert no secret value appears in a
-      generated plist. Arrives with plist generation.
+- [x] The plist half of the secret path — **absorbed into the frozen acceptance test** for
+      plist generation. The useful assertion turned out not to be "no secret in the plist"
+      (`ServiceSpec` carries none, so that check could never fail) but **exactly these seven
+      keys and no others**: it is what catches a future `EnvironmentVariables` section, which is
+      the natural place someone would put credentials in a world-readable file.
 - [ ] `[supervised]` — *`bootstrap`/`bootout`/`Status` drive real launchd state.*
       `LaunchdManager` — `bootstrap` / `bootout`, `Status`
-- [ ] **Plist generation is now loop-safe** — the dependency that blocked it is resolved:
-      `Program` is the binary's absolute path and `Args` are `__launch <name> --config <path>`
-      ([`docs/SPEC-launcher.md`](docs/SPEC-launcher.md) fixes every key). A pure
-      `ServiceSpec` → XML function, testable against its output, including the invariant that
-      no secret appears in it. **Candidate for the next `/groundrules:realize`** — it needs a
-      red acceptance test first.
+- [~] Plist generation — split into `loop/backlog.md` as a `[loop]` task, with a red acceptance
+      test frozen in `internal/launchd/plist_test.go` (2026-08-21).
 - [ ] `[supervised]` — *real network and DNS side effects on a shared tunnel; not a
       bounded blast radius.* `CloudflaredExposer` — ingress rule + `cloudflared tunnel route
       dns`
@@ -74,10 +80,10 @@ seams plus `Entry` / `HealthReport` are declared with stubs returning
       acceptance test frozen in `internal/bridge/validate_test.go` (2026-08-20). Reject a
       `name` / `subdomain` containing `/`, `..`, or anything outside a strict charset — they
       become a launchd label, a hostname *and* a log path
-- [ ] `[supervised]` — *same as above: the task is the oracle. Also premature — we do not
-      yet own the code that passes a bind address to `mcp-proxy`; that arrives with the
-      launcher.* Assert the proxy binds `127.0.0.1` only, never `0.0.0.0` — as a test, since
-      it is a security control rather than a default
+- [x] Assert the proxy binds `127.0.0.1` only, never `0.0.0.0` — **done**:
+      `TestBuildBindsLoopbackExplicitly` in `internal/launcher/launcher_test.go` checks both the
+      explicit `--host 127.0.0.1` and that no argument mentions `0.0.0.0`. The reason it was
+      deferred (we did not yet own the code passing the bind address) went away with `__launch`.
 
 ## Ideas — to triage
 

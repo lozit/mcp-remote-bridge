@@ -44,3 +44,21 @@ A task the loop can't verify its way out of, or that hides a decision, will be p
       Out of scope: never dial `0.0.0.0` or the public hostname (loopback only — a security
       control, not a default); do not implement the other probes; do not change `Check`,
       `HealthReport` or `ProxyDialTimeout`.
+
+- [ ] **Implement `BuildPlist` in `internal/launchd/plist.go`.**
+      Acceptance test: `go test ./internal/launchd/` → exit 0 = green.
+      Behaviour: render a `bridge.ServiceSpec` as a launchd XML property list. It must contain
+      **exactly** these seven keys, no others: `Label` (string), `ProgramArguments` (array of
+      strings: `spec.Program` first, then `spec.Args`), `RunAtLoad` (boolean true), `KeepAlive`
+      (a **dictionary** — `SuccessfulExit: false` when `spec.KeepAlive.OnFailure`, `Crashed:
+      true` when `spec.KeepAlive.OnCrash`; omit the whole key when the policy is zero, so a
+      service is never supervised without being asked), `ThrottleInterval` (integer seconds
+      from `spec.ThrottleInterval`), `StandardOutPath` and `StandardErrorPath` (strings).
+      XML metacharacters (`& < > " '`) in any value must be escaped so the document survives a
+      round trip. Return an error rather than a document for a spec that cannot be rendered
+      honestly: empty `Label`, empty `Program`, or a `Program` that is not an absolute path.
+      Out of scope: **never add an `EnvironmentVariables` key** — the plist is world-readable
+      and secrets are resolved at launch time by `__launch` (ADR 0002); do not rewrite or
+      inject arguments; do not add a TOML/plist library (a dependency needs an ADR); do not
+      touch `bridge.ServiceSpec`, `KeepAlivePolicy`, or any file outside
+      `internal/launchd/plist.go`.
