@@ -67,9 +67,16 @@ seams plus `Entry` / `HealthReport` are declared with stubs returning
       `LaunchdManager` — `bootstrap` / `bootout`, `Status`
 - [x] Plist generation — **done** by the loop, then hardened: a `ThrottleInterval` under 1s is
       now refused, since it rendered as `0` and disabled throttling (2026-08-21).
-- [ ] `[supervised]` — *real network and DNS side effects on a shared tunnel; not a
-      bounded blast radius.* `CloudflaredExposer` — ingress rule + `cloudflared tunnel route
-      dns`
+- [ ] `[supervised]` — *real network and DNS side effects on a shared tunnel; not a bounded
+      blast radius.* `CloudflaredExposer` — ingress entry + proxied `CNAME` **via the Cloudflare
+      API** ([ADR 0006](docs/decisions/0006-exposer-targets-remotely-managed-tunnels.md)).
+      Watch the read-modify-write on `PUT .../configurations`: it replaces the whole ingress
+      list, so two concurrent runs — or a dashboard edit between the read and the write — drop
+      entries silently. Re-read immediately before writing and preserve what we did not create.
+- [ ] `[supervised]` — config: `[infra]` gains `account_id`, `zone_id`, `tunnel_id`, `api_token`
+      and loses `tunnel`; the parser must validate `api_token` as a secret reference like any
+      other. `doctor` checks the new preconditions (connector running, token present — never
+      tested with a write).
 - [ ] `[supervised]` — *cross-cutting: orchestrates all three seams.* `ensure_exposed` —
       the reconcile loop: detect what drifted, repair only that
 - [ ] `[supervised]` — *cross-cutting, and its acceptance is a real teardown observed on a

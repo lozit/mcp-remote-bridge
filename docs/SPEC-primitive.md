@@ -54,7 +54,9 @@ proxy dead) → it repairs only what drifted.
 ### Preconditions (assumed present, never created by the primitive)
 
 Too setup-variable to own: the exposer's tool installed with a **named tunnel
-already created and authenticated** (for the MVP: `cloudflared` + a tunnel);
+already created** (for the MVP: `cloudflared` installed **as a service from a token** — the
+remotely-managed model, see [ADR 0006](decisions/0006-exposer-targets-remotely-managed-tunnels.md));
+plus a **Cloudflare API token** held in the `SecretSource`;
 `mcp-proxy` available. The primitive **adds hostnames to** the tunnel; it does not
 build the tunnel.
 
@@ -171,8 +173,12 @@ MVP implementations:
 
 - `LaunchdManager` — `~/Library/LaunchAgents/<label>.plist`, `launchctl bootstrap` /
   `bootout`.
-- `CloudflaredExposer` — adds an ingress rule + `cloudflared tunnel route dns` to a
-  named, already-authenticated tunnel.
+- `CloudflaredExposer` — adds an ingress entry and a proxied `CNAME` **through the Cloudflare
+  API**, to a remotely-managed tunnel addressed by id
+  ([ADR 0006](decisions/0006-exposer-targets-remotely-managed-tunnels.md)).
+  Not `cloudflared tunnel route dns`: that needs `~/.cloudflared/cert.pem`, which a
+  token-installed connector does not have. More fundamentally, a remotely-managed tunnel keeps
+  its ingress configuration **in Cloudflare, not on disk**, so there is no local rule to write.
 - `KeychainSecretSource` — macOS keychain lookup at launch, via the generated
   launcher.
 

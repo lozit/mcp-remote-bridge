@@ -56,9 +56,12 @@ func TestLaunchKeepsTheSecretOutOfProcessArgv(t *testing.T) {
 	cfgPath := filepath.Join(dir, "config.toml")
 	writeFile(t, cfgPath, fmt.Sprintf(`
 [infra]
-tunnel   = "test-tunnel"
-domain   = "example.com"
-keychain = %q
+domain     = "example.com"
+account_id = "a"
+zone_id    = "z"
+tunnel_id  = "u"
+api_token  = "keychain:launch-test-secret"
+keychain   = %q
 
 [mcp.sleeper]
 command   = %q

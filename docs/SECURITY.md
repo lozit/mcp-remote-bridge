@@ -109,6 +109,23 @@ request body from the `initialize` probe. Log the *shape* of a failure, not its 
 The launcher's **error path** is the one people forget: a missing or unreadable secret is
 reported by *key name*, never by value, and never by dumping the environment it had built.
 
+## The Cloudflare API token
+
+**This is the first credential the tool holds on its own behalf.** Everything else it touches is
+the *user's* secret, read to hand to an MCP. A Cloudflare API token is different: it lets the
+tool modify a zone's DNS, which is the strongest capability anywhere in this system.
+
+- **It is a `SecretSource` reference**, never a config value, never in `argv`, resolved at the
+  moment of use. Rule 3 covers it, and it is now the most important thing rule 3 covers.
+- **Least privilege is required, not advised**: `Zone:DNS:Edit` scoped to the single zone, plus
+  `Account:Cloudflare Tunnel:Edit`. **Never a Global API Key** — it is account-wide and cannot be
+  scoped, so a leak would be unbounded.
+- **`doctor` reports its presence, never its value**, and must not "test" it with a write.
+- **If it leaks**: revoke it in the Cloudflare dashboard first, then `set-secret` a fresh one.
+  Revocation comes first because rotation alone leaves the old token valid.
+
+See [ADR 0006](decisions/0006-exposer-targets-remotely-managed-tunnels.md).
+
 ## Attack surface and controls
 
 - **Untrusted input — the config file.** User-authored, but `command`/`args` become an

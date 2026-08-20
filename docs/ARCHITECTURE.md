@@ -100,7 +100,7 @@ variety is purely additive later:
 | Seam | MVP implementation | Mechanism |
 |---|---|---|
 | `ServiceManager` | `LaunchdManager` | `~/Library/LaunchAgents/<label>.plist`, `launchctl bootstrap` / `bootout` |
-| `Exposer` | `CloudflaredExposer` | ingress rule + `cloudflared tunnel route dns` on a named, already-authenticated tunnel |
+| `Exposer` | `CloudflaredExposer` | ingress entry + proxied `CNAME` via the **Cloudflare API**, on a remotely-managed tunnel addressed by id ([ADR 0006](decisions/0006-exposer-targets-remotely-managed-tunnels.md)) |
 | `SecretSource` | `KeychainSecretSource` | macOS keychain lookup **at launch**, via the generated launcher |
 
 ### The CLI
@@ -158,7 +158,8 @@ confirm the teardown. Never triggered by an `apply`; always explicit.
 ## Points of attention
 
 - **Preconditions are assumed, never created.** `cloudflared` installed with a named tunnel
-  already created and authenticated; `mcp-proxy` available. The tool *adds hostnames to* a
+  installed as a service from a token, with a Cloudflare API token in the `SecretSource`;
+  `mcp-proxy` available. The tool *adds hostnames to* a
   tunnel; it does not build one. `doctor` is the mitigation.
 - **Failure modes to handle explicitly** — port already in use · tunnel not running or not
   authenticated · referenced secret missing (fail clearly) · MCP crashes on boot with the

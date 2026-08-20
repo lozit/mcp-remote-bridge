@@ -47,6 +47,10 @@ versions follow [Semantic Versioning](https://semver.org/).
 - Project bootstrapped with groundrules on 2026-08-20
 
 ### Changed
+- **The Exposer targets remotely-managed tunnels via the Cloudflare API**, not
+  `cloudflared tunnel route dns` (ADR 0006). `[infra]` loses `tunnel` and gains `account_id`,
+  `zone_id`, `tunnel_id` and `api_token`. **Breaking** for any config written against the
+  earlier draft.
 - `ServiceSpec.KeepAlive` is now a `KeepAlivePolicy` struct — launchd expresses this as a
   dictionary, which a bool could not carry.
 - `HealthReport` check `mcp_initialize` renamed to `mcp_responds` — the old name asserted a

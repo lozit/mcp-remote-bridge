@@ -22,8 +22,11 @@ report; every real action is a primitive call.
 ```toml
 # shared infrastructure — assumed already set up (see preconditions)
 [infra]
-tunnel = "mac-mcp-bridge"        # a cloudflared tunnel, already created + authenticated
-domain = "example.com"
+domain     = "example.com"
+account_id = "abc123..."                 # Cloudflare account
+zone_id    = "def456..."                 # the zone that owns `domain`
+tunnel_id  = "0e5f...-uuid"              # a REMOTELY-MANAGED tunnel (installed from a token)
+api_token  = "keychain:cf-api-token"     # a reference, never a value (rule 3)
 # keychain = "~/Library/Keychains/mcp.keychain-db"   # optional: a dedicated keychain,
 #   lockable independently of the login keychain, so an unlocked session exposes less
 
@@ -41,8 +44,13 @@ port      = 8081                  # explicit, if you want it stable
 secrets   = { LIBRELINKUP_EMAIL = "keychain:mcp-freestyle-email" }
 ```
 
-`[mcp.<name>]` maps one-to-one onto the primitive's `entry`. `[infra]` supplies the
-shared `tunnel`/`domain` so each entry does not repeat them.
+`[mcp.<name>]` maps one-to-one onto the primitive's `entry`. `[infra]` supplies the shared
+identifiers so each entry does not repeat them.
+
+**`tunnel_id`, not a tunnel name**: the Cloudflare API addresses tunnels by id, and the DNS
+target is `{tunnel_id}.cfargotunnel.com`. **`api_token` is a reference**, resolved through the
+`SecretSource` like any other secret — it is the most powerful credential in the system
+([ADR 0006](decisions/0006-exposer-targets-remotely-managed-tunnels.md)).
 
 An entry may also declare a plain `env` table for **non-secret** variables:
 

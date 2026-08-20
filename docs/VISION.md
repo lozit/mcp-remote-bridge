@@ -36,7 +36,8 @@ domain, ports and secrets are all inputs.
 - **MVP platform boundary**: macOS (launchd) + Cloudflare Tunnel (`cloudflared`) + macOS
   keychain — exactly one implementation per seam.
 - **Preconditions are assumed, never created**: the exposer's tool installed with a
-  **named tunnel already created and authenticated**, and `mcp-proxy` available. The tool
+  **tunnel installed as a service from a token**, a Cloudflare API token in the keychain, and
+  `mcp-proxy` available. The tool
   *adds hostnames to* a tunnel; it does not build one.
 - **The secret path is non-negotiable**: no secret value in the config, in a service file,
   or on a command line — referenced by name, fetched from the keychain at launch, failing

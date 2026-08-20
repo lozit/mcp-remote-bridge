@@ -128,5 +128,13 @@ reason the problem exists at all.
 
 ## T
 
-**Tunnel (named)** — a `cloudflared` tunnel with a name, already created and authenticated.
-The tool adds hostnames to it. Referenced by `[infra].tunnel` in the config.
+**Tunnel (remotely-managed)** — a `cloudflared` tunnel installed from a token
+(`cloudflared service install <token>`), whose ingress configuration lives **in Cloudflare, not
+on disk**. This is the MVP's only supported model, and the one the default install path
+produces. Addressed by `tunnel_id` (a UUID) rather than by name, because that is how the API
+addresses it and because the DNS target is `{tunnel_id}.cfargotunnel.com`. Referenced by
+`[infra].tunnel_id`. See [ADR 0006](decisions/0006-exposer-targets-remotely-managed-tunnels.md).
+
+**Tunnel (locally-managed)** — the other model: created with `cloudflared tunnel login`, which
+writes `~/.cloudflared/cert.pem`, with ingress rules in a local `config.yml`. **Not supported in
+the MVP** — deliberately, since it cannot be tested on the target machine.

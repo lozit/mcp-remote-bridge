@@ -28,11 +28,21 @@ type File struct {
 
 // Infra is the shared infrastructure every entry references.
 //
-// Both fields are preconditions: the tunnel is assumed to exist and be
-// authenticated already; this tool adds hostnames to it.
+// The tunnel is a precondition: it is assumed to exist as a remotely-managed
+// tunnel, installed from a token. This tool adds hostnames to it through the
+// Cloudflare API — there is no local ingress file to write. See ADR 0006.
 type Infra struct {
-	Tunnel string `toml:"tunnel"`
 	Domain string `toml:"domain"`
+
+	// AccountID, ZoneID and TunnelID address the tunnel through the API.
+	// TunnelID is a UUID rather than a name.
+	AccountID string `toml:"account_id"`
+	ZoneID    string `toml:"zone_id"`
+	TunnelID  string `toml:"tunnel_id"`
+
+	// APIToken is a SecretSource reference, validated like any other secret
+	// reference: the config never holds the value.
+	APIToken string `toml:"api_token"`
 
 	// Keychain optionally names a specific keychain file to resolve secrets
 	// from. Empty means the user's default search list.
@@ -111,11 +121,27 @@ func Parse(raw []byte, path string) (*File, error) {
 func (f *File) validate() []string {
 	var problems []string
 
-	if f.Infra.Tunnel == "" {
-		problems = append(problems, "[infra] tunnel is required (the name of an existing, authenticated tunnel)")
-	}
 	if f.Infra.Domain == "" {
 		problems = append(problems, "[infra] domain is required")
+	}
+	for _, req := range []struct{ name, value string }{
+		{"account_id", f.Infra.AccountID},
+		{"zone_id", f.Infra.ZoneID},
+		{"tunnel_id", f.Infra.TunnelID},
+	} {
+		if req.value == "" {
+			problems = append(problems, fmt.Sprintf("[infra] %s is required (the Cloudflare API addresses tunnels by id, not by name)", req.name))
+		}
+	}
+	if f.Infra.APIToken == "" {
+		problems = append(problems, "[infra] api_token is required (a secret reference to a Cloudflare API token)")
+	} else if !isSecretReference(f.Infra.APIToken) {
+		// Never echoes the value: the likely cause is a pasted token, and this
+		// one can modify the zone's DNS.
+		problems = append(problems, fmt.Sprintf(
+			"[infra] api_token is not a secret reference (expected one of %s). "+
+				"The config holds references, never values — store the token with `set-secret` and reference it here",
+			strings.Join(knownSecretPrefixes, ", ")))
 	}
 	if len(f.MCP) == 0 {
 		problems = append(problems, "no [mcp.<name>] entry: there is nothing to expose")
@@ -203,8 +229,11 @@ func (f *File) Entries() []bridge.Entry {
 			Secrets:   e.Secrets,
 			Port:      e.Port,
 			Subdomain: e.Subdomain,
-			Tunnel:    f.Infra.Tunnel,
 			Domain:    f.Infra.Domain,
+			AccountID: f.Infra.AccountID,
+			ZoneID:    f.Infra.ZoneID,
+			TunnelID:  f.Infra.TunnelID,
+			APIToken:  f.Infra.APIToken,
 		})
 	}
 	return out

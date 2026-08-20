@@ -7,8 +7,11 @@ import (
 
 const valid = `
 [infra]
-tunnel = "mac-mcp-bridge"
-domain = "example.com"
+domain     = "example.com"
+account_id = "acc123"
+zone_id    = "zone456"
+tunnel_id  = "0e5f-uuid"
+api_token  = "keychain:cf-api-token"
 
 [mcp.standardnotes]
 command   = "mcp-standardnotes"
@@ -36,8 +39,8 @@ func TestParseAcceptsAValidConfig(t *testing.T) {
 	}
 	// [infra] is spread onto every entry so the primitive never reads the file.
 	for _, e := range entries {
-		if e.Tunnel != "mac-mcp-bridge" || e.Domain != "example.com" {
-			t.Errorf("%s did not inherit [infra]: tunnel=%q domain=%q", e.Name, e.Tunnel, e.Domain)
+		if e.TunnelID != "0e5f-uuid" || e.Domain != "example.com" {
+			t.Errorf("%s did not inherit [infra]: tunnel_id=%q domain=%q", e.Name, e.TunnelID, e.Domain)
 		}
 	}
 	if got := entries[1].Hostname(); got != "sn-mcp.example.com" {
@@ -55,8 +58,11 @@ func TestParseAcceptsAValidConfig(t *testing.T) {
 func TestParseRejectsASecretValueInPlaceOfAReference(t *testing.T) {
 	const pasted = `
 [infra]
-tunnel = "t"
-domain = "example.com"
+domain     = "example.com"
+account_id = "a"
+zone_id    = "z"
+tunnel_id  = "u"
+api_token  = "keychain:cf"
 [mcp.sn]
 command   = "x"
 subdomain = "sn"
@@ -80,8 +86,11 @@ secrets   = { SN_PASSWORD = "hunter2-actual-password" }
 func TestParseRejectsAnUnknownKey(t *testing.T) {
 	const typo = `
 [infra]
-tunnel = "t"
-domain = "example.com"
+domain     = "example.com"
+account_id = "a"
+zone_id    = "z"
+tunnel_id  = "u"
+api_token  = "keychain:cf"
 [mcp.sn]
 command   = "x"
 subdomian = "sn"
@@ -107,7 +116,7 @@ port = 99999
 		t.Fatal("an unusable config was accepted")
 	}
 	msg := err.Error()
-	for _, want := range []string{"tunnel is required", "domain is required", "command is required", "port 99999"} {
+	for _, want := range []string{"domain is required", "account_id is required", "api_token is required", "command is required", "port 99999"} {
 		if !strings.Contains(msg, want) {
 			t.Errorf("missing %q in:\n%s", want, msg)
 		}
@@ -117,8 +126,11 @@ port = 99999
 func TestParseRejectsCollisions(t *testing.T) {
 	const clash = `
 [infra]
-tunnel = "t"
-domain = "example.com"
+domain     = "example.com"
+account_id = "a"
+zone_id    = "z"
+tunnel_id  = "u"
+api_token  = "keychain:cf"
 [mcp.a]
 command = "x"
 subdomain = "same"
@@ -142,8 +154,11 @@ port = 9000
 func TestParseRejectsAVariableInBothEnvAndSecrets(t *testing.T) {
 	const both = `
 [infra]
-tunnel = "t"
-domain = "example.com"
+domain     = "example.com"
+account_id = "a"
+zone_id    = "z"
+tunnel_id  = "u"
+api_token  = "keychain:cf"
 [mcp.sn]
 command   = "x"
 subdomain = "sn"
@@ -169,5 +184,53 @@ func TestEntryLooksUpByName(t *testing.T) {
 	}
 	if _, err := f.Entry("nope"); err == nil {
 		t.Error("Entry returned no error for an absent name")
+	}
+}
+
+// The API token is the most powerful credential in the system — it can modify
+// the zone's DNS — so it goes through the same reference check as any other
+// secret, and the error must not echo a pasted value.
+func TestParseRejectsAPastedAPIToken(t *testing.T) {
+	const pasted = `
+[infra]
+domain     = "example.com"
+account_id = "a"
+zone_id    = "z"
+tunnel_id  = "u"
+api_token  = "v1.0-actual-cloudflare-token-value"
+[mcp.sn]
+command   = "x"
+subdomain = "sn"
+`
+	_, err := Parse([]byte(pasted), "test.toml")
+	if err == nil {
+		t.Fatal("a pasted Cloudflare API token was accepted as a reference")
+	}
+	if strings.Contains(err.Error(), "v1.0-actual-cloudflare-token-value") {
+		t.Errorf("the error echoed the token value: %v", err)
+	}
+	if !strings.Contains(err.Error(), "api_token") {
+		t.Errorf("the error should name the field: %v", err)
+	}
+}
+
+// A tunnel name where an id belongs is a likely migration mistake, so the
+// absence of each id is reported by name rather than as one vague failure.
+func TestParseNamesEachMissingInfraField(t *testing.T) {
+	const bare = `
+[infra]
+domain = "example.com"
+[mcp.sn]
+command   = "x"
+subdomain = "sn"
+`
+	_, err := Parse([]byte(bare), "test.toml")
+	if err == nil {
+		t.Fatal("a config with no tunnel identifiers was accepted")
+	}
+	for _, want := range []string{"account_id is required", "zone_id is required", "tunnel_id is required", "api_token is required"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("missing %q in:\n%s", want, err)
+		}
 	}
 }
