@@ -34,3 +34,4 @@ No ADR needed for trivial choices or implementation details.
 | [0002](0002-launcher-is-a-hidden-subcommand.md) | The launcher is a hidden subcommand, not a generated shell script | Accepted | 2026-08-20 |
 | [0003](0003-liveness-probe-must-carry-data.md) | The liveness probe must carry data back from the MCP | Accepted | 2026-08-21 |
 | [0004](0004-keychain-read-must-use-g-not-w.md) | Read keychain secrets with `security -g`, never `-w` | Accepted | 2026-08-21 |
+| [0005](0005-toml-library-and-dependency-policy.md) | TOML library: `pelletier/go-toml/v2`, and the dependency policy | Accepted | 2026-08-21 |

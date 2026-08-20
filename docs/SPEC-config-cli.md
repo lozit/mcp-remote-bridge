@@ -11,7 +11,10 @@ report; every real action is a primitive call.
 
 - **Location**: `$XDG_CONFIG_HOME/mcp-remote-bridge/config.toml`
   (`~/.config/mcp-remote-bridge/config.toml`), overridable with `--config`.
-- **Format**: TOML — typed, comment-able, human-edited; the Go/CLI-config default.
+- **Format**: TOML — typed, comment-able, human-edited; the Go/CLI-config default. Parsed by
+  `pelletier/go-toml/v2` with **unknown keys rejected**
+  ([ADR 0005](decisions/0005-toml-library-and-dependency-policy.md)): a typo in `subdomain` would
+  otherwise publish the MCP at a different hostname, silently.
 - **It is committable / shareable.** It carries **no secret values** — only
   references (rule 3 of the primitive). A user can put this file in a dotfiles repo
   without leaking anything.

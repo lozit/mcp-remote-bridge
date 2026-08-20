@@ -41,11 +41,12 @@ seams plus `Entry` / `HealthReport` are declared with stubs returning
       `decorate` hook exists and is unused), and exercise it through a real hostname rather than
       loopback.* The `mcp_responds` probe itself is **done**.
 - [x] `KeychainSecretSource` — **done** (ADR 0004: `-g`, not `-w`).
-- [ ] `[supervised]` — **blocked on the config parser**: `__launch <name> --config <path>` has to
-      load the TOML config, which is Milestone 2 work and needs a TOML dependency (an ADR, per the
-      invariant on adding dependencies). Decide: pull the config parser forward, or give `__launch`
-      a narrower input for now. The `__launch` subcommand itself (resolve secrets, build a minimal
-      explicit environment, `syscall.Exec` mcp-proxy with `--pass-environment`, never `-e`)
+- [x] Config parser — **done** (ADR 0005). Strict TOML, every problem reported at once, secret
+      references validated, subdomain/port collisions rejected.
+- [ ] `[supervised]` — **unblocked**: the config parser exists (ADR 0005). The `__launch`
+      subcommand — resolve secrets, build a minimal explicit environment, `syscall.Exec` mcp-proxy
+      with `--pass-environment`, never `-e`. Needs an integration test that asserts the secret
+      reaches the MCP's environment and appears in neither `argv` nor the plist.
 - [ ] `[supervised]` — *`bootstrap`/`bootout`/`Status` drive real launchd state.*
       `LaunchdManager` — `bootstrap` / `bootout`, `Status`
 - [ ] **Plist generation is now loop-safe** — the dependency that blocked it is resolved:
@@ -93,6 +94,9 @@ Each gets triaged later → a **decision** (ADR), a **build** (PRD), a **milesto
 
 ## Recently done
 
+- [x] Config file + parser landed early: `__launch` and `apply` both needed it, so it moved off
+      Milestone 2 onto the critical path. First dependency of the project, argued in ADR 0005
+      together with the dependency policy (2026-08-21)
 - [x] `mcp_responds` probe implemented, with an integration harness that runs a **real**
       mcp-proxy over a real stdio MCP (the test binary re-execs itself as the fixture), kills
       the MCP by PID and requires the probe to go red. Verified by mutation: reverting the probe

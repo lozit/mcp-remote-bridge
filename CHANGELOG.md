@@ -9,6 +9,10 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Config file support — strict TOML at `$XDG_CONFIG_HOME/mcp-remote-bridge/config.toml`, with
+  unknown keys rejected, all problems reported at once, secret references validated (a pasted
+  value is refused, and the error does not echo it), and subdomain/port collisions caught.
+- ADR 0005 — TOML library `pelletier/go-toml/v2`, and the project's dependency policy.
 - `KeychainSecretSource` — resolves `keychain:<service>` references via `security -g`, with a
   round-trip test over every byte class (accents, tabs, newlines, PEM keys, emoji) and a named
   error for a missing secret.

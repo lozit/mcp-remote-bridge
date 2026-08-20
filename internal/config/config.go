@@ -1,0 +1,222 @@
+// Package config loads the declarative config file and turns it into entries
+// the primitive can act on.
+//
+// It is deliberately strict: this file is hand-edited and its fields decide
+// which hostname gets published, so an unrecognised key is an error rather than
+// something quietly ignored. See ADR 0005.
+package config
+
+import (
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+
+	"github.com/pelletier/go-toml/v2"
+
+	"github.com/lozit/mcp-remote-bridge/internal/bridge"
+	"github.com/lozit/mcp-remote-bridge/internal/keychain"
+)
+
+// File is the on-disk shape of the config.
+type File struct {
+	Infra Infra          `toml:"infra"`
+	MCP   map[string]MCP `toml:"mcp"`
+}
+
+// Infra is the shared infrastructure every entry references.
+//
+// Both fields are preconditions: the tunnel is assumed to exist and be
+// authenticated already; this tool adds hostnames to it.
+type Infra struct {
+	Tunnel string `toml:"tunnel"`
+	Domain string `toml:"domain"`
+}
+
+// MCP is one [mcp.<name>] table.
+type MCP struct {
+	Command   string            `toml:"command"`
+	Args      []string          `toml:"args"`
+	Subdomain string            `toml:"subdomain"`
+	Port      int               `toml:"port"`
+	Env       map[string]string `toml:"env"`
+	Secrets   map[string]string `toml:"secrets"`
+}
+
+// knownSecretPrefixes are the SecretSource schemes a reference may name.
+//
+// A secrets value that matches none of these is rejected rather than resolved:
+// the most likely reason for a bare value is that someone pasted the secret
+// itself, and rule 3 says the config never holds one.
+var knownSecretPrefixes = []string{keychain.Prefix}
+
+// DefaultPath is $XDG_CONFIG_HOME/mcp-remote-bridge/config.toml, falling back to
+// ~/.config when XDG_CONFIG_HOME is unset.
+func DefaultPath() (string, error) {
+	dir := os.Getenv("XDG_CONFIG_HOME")
+	if dir == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("locating the config directory: %w", err)
+		}
+		dir = filepath.Join(home, ".config")
+	}
+	return filepath.Join(dir, "mcp-remote-bridge", "config.toml"), nil
+}
+
+// Load reads and validates the config at path.
+//
+// Every problem it can see is reported, not just the first: a hand-edited file
+// with three typos should take one round trip to fix, not three.
+func Load(path string) (*File, error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("reading the config: %w", err)
+	}
+	return Parse(raw, path)
+}
+
+// Parse validates config bytes. path is used only in messages.
+func Parse(raw []byte, path string) (*File, error) {
+	var f File
+	dec := toml.NewDecoder(strings.NewReader(string(raw)))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&f); err != nil {
+		var strict *toml.StrictMissingError
+		if errors.As(err, &strict) {
+			return nil, fmt.Errorf("%s: unrecognised key — a typo here can publish an MCP at the wrong hostname:\n%s", path, strict.String())
+		}
+		var de *toml.DecodeError
+		if errors.As(err, &de) {
+			return nil, fmt.Errorf("%s:\n%s", path, de.String())
+		}
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+	if problems := f.validate(); len(problems) > 0 {
+		return nil, fmt.Errorf("%s is not usable:\n  - %s", path, strings.Join(problems, "\n  - "))
+	}
+	return &f, nil
+}
+
+func (f *File) validate() []string {
+	var problems []string
+
+	if f.Infra.Tunnel == "" {
+		problems = append(problems, "[infra] tunnel is required (the name of an existing, authenticated tunnel)")
+	}
+	if f.Infra.Domain == "" {
+		problems = append(problems, "[infra] domain is required")
+	}
+	if len(f.MCP) == 0 {
+		problems = append(problems, "no [mcp.<name>] entry: there is nothing to expose")
+	}
+
+	seenSubdomain := map[string]string{}
+	seenPort := map[int]string{}
+
+	for _, name := range sortedKeys(f.MCP) {
+		e := f.MCP[name]
+		at := fmt.Sprintf("[mcp.%s]", name)
+
+		if err := bridge.ValidateName(name); err != nil {
+			problems = append(problems, fmt.Sprintf("%s %v", at, err))
+		}
+		if e.Command == "" {
+			problems = append(problems, fmt.Sprintf("%s command is required", at))
+		}
+		if e.Subdomain == "" {
+			problems = append(problems, fmt.Sprintf("%s subdomain is required", at))
+		} else if err := bridge.ValidateSubdomain(e.Subdomain); err != nil {
+			problems = append(problems, fmt.Sprintf("%s %v", at, err))
+		}
+		if e.Port < 0 || e.Port > 65535 {
+			problems = append(problems, fmt.Sprintf("%s port %d is out of range (1-65535, or omit it to auto-assign)", at, e.Port))
+		}
+
+		// Two entries at one hostname, or on one port, is drift the reconciler
+		// cannot resolve: whichever runs last wins, silently.
+		if e.Subdomain != "" {
+			if other, dup := seenSubdomain[e.Subdomain]; dup {
+				problems = append(problems, fmt.Sprintf("%s and [mcp.%s] both claim subdomain %q", at, other, e.Subdomain))
+			} else {
+				seenSubdomain[e.Subdomain] = name
+			}
+		}
+		if e.Port != 0 {
+			if other, dup := seenPort[e.Port]; dup {
+				problems = append(problems, fmt.Sprintf("%s and [mcp.%s] both claim port %d", at, other, e.Port))
+			} else {
+				seenPort[e.Port] = name
+			}
+		}
+
+		for _, varName := range sortedKeys(e.Secrets) {
+			ref := e.Secrets[varName]
+			if !isSecretReference(ref) {
+				// Deliberately does NOT echo the value: if this really is a pasted
+				// secret, repeating it in an error message would write it to the
+				// terminal and the shell's scrollback.
+				problems = append(problems, fmt.Sprintf(
+					"%s secrets.%s is not a secret reference (expected one of %s). "+
+						"The config holds references, never values — store the value with `set-secret` and reference it here",
+					at, varName, strings.Join(knownSecretPrefixes, ", ")))
+			}
+		}
+		for _, varName := range sortedKeys(e.Env) {
+			if _, clash := e.Secrets[varName]; clash {
+				problems = append(problems, fmt.Sprintf("%s %s is set in both env and secrets", at, varName))
+			}
+		}
+	}
+	return problems
+}
+
+func isSecretReference(ref string) bool {
+	for _, p := range knownSecretPrefixes {
+		if rest, ok := strings.CutPrefix(ref, p); ok && rest != "" {
+			return true
+		}
+	}
+	return false
+}
+
+// Entries returns the config as primitive entries, in a stable order.
+func (f *File) Entries() []bridge.Entry {
+	out := make([]bridge.Entry, 0, len(f.MCP))
+	for _, name := range sortedKeys(f.MCP) {
+		e := f.MCP[name]
+		out = append(out, bridge.Entry{
+			Name:      name,
+			Command:   e.Command,
+			Args:      e.Args,
+			Env:       e.Env,
+			Secrets:   e.Secrets,
+			Port:      e.Port,
+			Subdomain: e.Subdomain,
+			Tunnel:    f.Infra.Tunnel,
+			Domain:    f.Infra.Domain,
+		})
+	}
+	return out
+}
+
+// Entry returns the single named entry, for the launcher.
+func (f *File) Entry(name string) (bridge.Entry, error) {
+	for _, e := range f.Entries() {
+		if e.Name == name {
+			return e, nil
+		}
+	}
+	return bridge.Entry{}, fmt.Errorf("no [mcp.%s] entry in the config", name)
+}
+
+func sortedKeys[V any](m map[string]V) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}

@@ -102,7 +102,7 @@ maintainer will read. This holds whatever language the surrounding conversation 
 ### Code
 
 **Go 1.24** — distributed as a single static binary (`brew`, download-and-run, no runtime).
-Stdlib-first; [Cobra](https://github.com/spf13/cobra) for command structure, TOML for the
+Stdlib-first (one dependency, argued in ADR 0005); [Cobra](https://github.com/spf13/cobra) for command structure, TOML for the
 config file.
 
 - The primitive talks **only to interfaces** (`ServiceManager`, `Exposer`, `SecretSource`).
