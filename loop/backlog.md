@@ -34,7 +34,7 @@ A task the loop can't verify its way out of, or that hides a decision, will be p
       Out of scope: do not change `Entry` or any other type; do not call these from
       `EnsureExposed` yet; do not touch any file other than `validate.go`.
 
-- [ ] **Implement `ProbeProxyListening` in `internal/bridge/probe.go`.**
+- [x] **Implement `ProbeProxyListening` in `internal/bridge/probe.go`.**
       Acceptance test: `go test ./internal/bridge/ -run TestProbeProxy` → exit 0 = green.
       Behaviour: dial TCP `127.0.0.1:<port>` bounded by `ProxyDialTimeout`, then close the
       connection. Return a `Check` with `Name: CheckProxyListening`; `OK` true when the dial
