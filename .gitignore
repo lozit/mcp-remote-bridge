@@ -1,0 +1,5 @@
+/mcp-remote-bridge
+/dist/
+/bin/
+*.log
+.DS_Store
