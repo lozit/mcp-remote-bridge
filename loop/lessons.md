@@ -8,3 +8,9 @@
   implementation that dials every interface; what proved the loopback-only invariant was an
   out-of-test probe against a listener bound to a **LAN address only** (expect `OK=false`). Probe the
   inputs the frozen test does not cover — that is where a green-but-wrong diff hides.
+- `plutil -lint` proves the document *parses*, not that launchd *accepts* it. What actually
+  verified `BuildPlist` was `launchctl bootstrap gui/$UID <generated.plist>` followed by
+  `launchctl print`: it showed `arguments` verbatim (including `a&b` and `two words`),
+  `minimum runtime = 60` for `ThrottleInterval`, `successful exit => 0` / `after crash => 1`
+  for the `KeepAlive` dict, and `runs = 1` for `RunAtLoad` — none of which a lint can tell
+  you. Bootstrap into a throwaway label and `bootout` afterwards.

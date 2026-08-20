@@ -45,7 +45,7 @@ A task the loop can't verify its way out of, or that hides a decision, will be p
       control, not a default); do not implement the other probes; do not change `Check`,
       `HealthReport` or `ProxyDialTimeout`.
 
-- [ ] **Implement `BuildPlist` in `internal/launchd/plist.go`.**
+- [x] **Implement `BuildPlist` in `internal/launchd/plist.go`.**
       Acceptance test: `go test ./internal/launchd/` → exit 0 = green.
       Behaviour: render a `bridge.ServiceSpec` as a launchd XML property list. It must contain
       **exactly** these seven keys, no others: `Label` (string), `ProgramArguments` (array of
