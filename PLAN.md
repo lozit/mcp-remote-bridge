@@ -44,6 +44,10 @@ seams plus `Entry` / `HealthReport` are declared with stubs returning
 - [ ] `[supervised]` — *remaining on the probe: attach Cloudflare Access credentials (the
       `decorate` hook exists and is unused), and exercise it through a real hostname rather than
       loopback.* The `mcp_responds` probe itself is **done**.
+- [x] Loop run #2: `BuildPlist` delivered and verified. The verifier went past the frozen test
+      and loaded the plist into real launchd (`launchctl bootstrap` + `print`), which is the check
+      that actually proves launchd accepts it. Follow-up found by probing the zero value:
+      `ThrottleInterval` 0 disabled throttling — now refused (2026-08-21)
 - [x] Realize #2: plist generation partitioned to `[loop]` with a red acceptance test frozen in
       `internal/launchd/plist_test.go`; one PLAN task found already done, one absorbed into that
       test (2026-08-21)
@@ -61,8 +65,8 @@ seams plus `Entry` / `HealthReport` are declared with stubs returning
       the natural place someone would put credentials in a world-readable file.
 - [ ] `[supervised]` — *`bootstrap`/`bootout`/`Status` drive real launchd state.*
       `LaunchdManager` — `bootstrap` / `bootout`, `Status`
-- [~] Plist generation — split into `loop/backlog.md` as a `[loop]` task, with a red acceptance
-      test frozen in `internal/launchd/plist_test.go` (2026-08-21).
+- [x] Plist generation — **done** by the loop, then hardened: a `ThrottleInterval` under 1s is
+      now refused, since it rendered as `0` and disabled throttling (2026-08-21).
 - [ ] `[supervised]` — *real network and DNS side effects on a shared tunnel; not a
       bounded blast radius.* `CloudflaredExposer` — ingress rule + `cloudflared tunnel route
       dns`

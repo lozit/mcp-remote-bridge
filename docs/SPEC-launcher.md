@@ -120,7 +120,7 @@ Beware what that `initialize` does **not** prove — see
 | `ProgramArguments` | the absolute path of the `mcp-remote-bridge` binary, then `__launch`, `<name>`, `--config`, `<path>` |
 | `RunAtLoad` | true |
 | `KeepAlive` | a **dictionary**, not a boolean: `{SuccessfulExit: false, Crashed: true}` — restart when the program exits non-zero or crashes |
-| `ThrottleInterval` | ≥ 60s, so an unrecoverable failure fails slowly rather than spinning |
+| `ThrottleInterval` | ≥ 60s, so an unrecoverable failure fails slowly rather than spinning. **Below 1s is refused**: launchd takes whole seconds, so anything smaller renders as `0`, and `0` disables throttling — the zero value must not be the dangerous one |
 | `StandardOutPath` / `StandardErrorPath` | the entry's **own** log paths — one file per entry |
 
 > **Measured against a working hand-built setup** (`~/Library/LaunchAgents/com.mcpstandardnotes.proxy.plist`,

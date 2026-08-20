@@ -11,7 +11,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 ### Added
 - `BuildPlist` — renders a `bridge.ServiceSpec` as a launchd plist carrying exactly seven
   keys and no environment section, verified by having launchd itself load the generated
-  document.
+  document. Refuses a spec it cannot render honestly, including a `ThrottleInterval` under 1s
+  (launchd takes whole seconds, so it would render as `0` and disable throttling).
 - `__launch` — the hidden subcommand launchd execs. Resolves secrets, builds a minimal explicit
   environment (`PATH`, `HOME`, declared `env`, resolved secrets — nothing inherited), and
   `syscall.Exec`s mcp-proxy with `--pass-environment`.

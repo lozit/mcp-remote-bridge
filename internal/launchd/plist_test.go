@@ -200,6 +200,11 @@ func TestBuildPlistRejectsAnIncompleteSpec(t *testing.T) {
 		{"no label", func(s *bridge.ServiceSpec) { s.Label = "" }},
 		{"no program", func(s *bridge.ServiceSpec) { s.Program = "" }},
 		{"relative program path", func(s *bridge.ServiceSpec) { s.Program = "mcp-remote-bridge" }},
+		// A throttle below one second truncates to <integer>0</integer>, which
+		// disables throttling entirely — the opposite of what it was asked for.
+		// The likely cause is a caller that never set the field at all.
+		{"zero throttle", func(s *bridge.ServiceSpec) { s.ThrottleInterval = 0 }},
+		{"sub-second throttle", func(s *bridge.ServiceSpec) { s.ThrottleInterval = 900 * time.Millisecond }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			spec := testSpec()
@@ -237,5 +242,28 @@ func TestBuildPlistDoesNotRewriteArguments(t *testing.T) {
 	}
 	if strings.Join(joined[1:], " ") != strings.Join(spec.Args, " ") {
 		t.Errorf("arguments were rewritten: got %v, want %v", joined[1:], spec.Args)
+	}
+}
+
+// A throttle that truncates to zero must be refused, not silently emitted.
+//
+// This is the failure it prevents: a secret deleted after `apply` makes the
+// launcher exit non-zero before starting the proxy; KeepAlive restarts it; with
+// ThrottleInterval at 0 that becomes a spin instead of the slow, visible loop
+// SPEC-launcher.md asks for. The caller most likely to hit it is one that never
+// set the field, so the zero value must not be the dangerous one.
+func TestBuildPlistRefusesAThrottleThatTruncatesToZero(t *testing.T) {
+	for _, d := range []time.Duration{0, 1 * time.Nanosecond, 999 * time.Millisecond} {
+		spec := testSpec()
+		spec.ThrottleInterval = d
+		if _, err := BuildPlist(spec); err == nil {
+			t.Errorf("BuildPlist accepted ThrottleInterval=%v, which renders as 0 and disables throttling", d)
+		}
+	}
+	// One second is the smallest value that survives the conversion.
+	spec := testSpec()
+	spec.ThrottleInterval = time.Second
+	if _, err := BuildPlist(spec); err != nil {
+		t.Errorf("BuildPlist rejected ThrottleInterval=1s: %v", err)
 	}
 }

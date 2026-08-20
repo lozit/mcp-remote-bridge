@@ -43,6 +43,15 @@ func BuildPlist(spec bridge.ServiceSpec) ([]byte, error) {
 		// directory to resolve a relative path against.
 		return nil, fmt.Errorf("service spec %q has a relative program path %q: an absolute path is required", spec.Label, spec.Program)
 	}
+	if spec.ThrottleInterval < time.Second {
+		// launchd takes whole seconds, so anything under one second renders as 0,
+		// and 0 disables throttling — the opposite of what was asked for. Refusing
+		// matters most for the zero value, which is what a caller that never set
+		// the field passes: it would turn an unrecoverable failure (a secret
+		// deleted after apply) into a restart spin instead of the slow, visible
+		// loop SPEC-launcher.md asks for.
+		return nil, fmt.Errorf("service spec %q has a throttle interval of %v: at least 1s is required, since launchd takes whole seconds and 0 disables throttling", spec.Label, spec.ThrottleInterval)
+	}
 
 	var b bytes.Buffer
 	b.WriteString(plistHeader)
@@ -73,7 +82,8 @@ func BuildPlist(spec bridge.ServiceSpec) ([]byte, error) {
 		b.WriteString("\t</dict>\n")
 	}
 
-	// Seconds as an integer — launchd rejects a string here.
+	// Whole seconds as an integer — launchd rejects a string here. A fractional
+	// value truncates down; anything that would truncate to 0 was refused above.
 	fmt.Fprintf(&b, "\t<key>ThrottleInterval</key>\n\t<integer>%d</integer>\n", spec.ThrottleInterval/time.Second)
 
 	writeString(&b, "StandardOutPath", spec.StdoutPath)

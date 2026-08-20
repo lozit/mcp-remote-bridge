@@ -12,6 +12,30 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Validating a file format is not validating that its consumer accepts it
+
+**Why**: the frozen acceptance test for `BuildPlist` validated generated plists with
+`plutil -lint`, which proves the XML *parses* as a property list. It says nothing about whether
+**launchd** accepts the document or interprets it as intended. The loop's verifier went further
+on its own — `launchctl bootstrap gui/$UID <plist>` then `launchctl print` — and that is what
+actually confirmed `minimum runtime = 60`, `successful exit => 0`, `after crash => 1` and the
+arguments passed through verbatim. A lint could not have told us any of it.
+
+The same gap bit the spec a second time in the same file: the test only ever used a 60s
+`ThrottleInterval`, so nothing caught that a **zero value renders as `<integer>0</integer>`,
+which disables throttling** — precisely the restart spin the spec introduced the field to
+prevent. The implementation was correct against the spec; the spec and its test were both
+incomplete.
+
+**When to apply**: whenever you generate a file another program consumes — a plist, a systemd
+unit, a cron entry, a k8s manifest, a Dockerfile. Two rules:
+
+1. **Validate with the real consumer, not a linter.** Load it, then read back what the consumer
+   understood. Use a throwaway name and tear it down afterwards.
+2. **Test the zero value of every field.** A struct field nobody sets is the input most likely
+   to reach production, and the one a happy-path fixture never exercises. If its rendering is
+   dangerous, refuse it — the zero value must not be the dangerous one.
+
 ## Round-trip every byte class through an external tool before trusting its output
 
 **Why**: `security find-generic-password -w` prints a password on stdout, which is exactly what
