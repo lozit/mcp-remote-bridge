@@ -19,7 +19,7 @@
 # caught.
 version: 2
 secret:
-  ignored-matches:
+  ignored_matches:
     - name: 'keychain parser doc comment - security(1) output shape'
       match: e6f88cb2eeb44820c7c349d20cb298acbeb605e394dc2ddae2630f51e5f949cf
     - name: 'keychain parser fixture - hex-shaped value must not be decoded'
