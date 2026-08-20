@@ -14,12 +14,21 @@ const (
 	CheckHostnameResolves CheckName = "hostname_resolves"
 	// CheckHostnameResponds reports whether the public hostname answers a request.
 	CheckHostnameResponds CheckName = "hostname_responds"
-	// CheckMCPInitialize is the deep probe: a real MCP initialize handshake
-	// driven all the way through the exposed hostname.
+	// CheckMCPResponds is the deep probe: a JSON-RPC call that must carry data
+	// back from the MCP process itself, with the verdict read from the response
+	// body rather than the HTTP status.
 	//
 	// It exists because of the subtle trap: the proxy can be listening while the
 	// MCP inside it is dead. Every other check passes in that state.
-	CheckMCPInitialize CheckName = "mcp_initialize"
+	//
+	// It is deliberately NOT named mcp_initialize. Measured against mcp-proxy
+	// 0.12.0, both `initialize` AND `ping` are answered by the proxy from the
+	// state it negotiated at startup, so neither reaches the MCP and neither can
+	// fail when the MCP is dead. `ping` is the worse trap of the two: the
+	// protocol advertises it for liveness, so its name disarms the reader.
+	// A dead MCP also still returns HTTP 200 — the failure is in the body.
+	// See docs/decisions/0003-liveness-probe-must-carry-data.md.
+	CheckMCPResponds CheckName = "mcp_responds"
 )
 
 // Check is one probe actually run, with the evidence behind its verdict.

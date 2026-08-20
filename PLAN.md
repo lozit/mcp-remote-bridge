@@ -25,7 +25,7 @@ seams plus `Entry` / `HealthReport` are declared with stubs returning
       door is open → `apply` fails unless `--allow-public`. Ambiguous → warn. Never read a
       generic failure as "protected" — only a positive auth signature (302 to an IdP, a 403
       from Cloudflare) counts. Requires Cloudflare Access **service-token support** in
-      `mcp_initialize` first, or a correctly guarded user gets a permanently red `status`.
+      the probe first, or a correctly guarded user gets a permanently red `status`.
       Decide where `--allow-public` is recorded: a CLI flag vanishes into shell history, the
       config file keeps the choice visible.
 
@@ -37,9 +37,12 @@ seams plus `Entry` / `HealthReport` are declared with stubs returning
       `ServiceManager.Status`, so a loop would have to author its own fake — writer = maker.
       Remaining probes for `HealthReport`: `hostname_resolves`, `hostname_responds`,
       `service_loaded`
-- [ ] `[supervised]` — *embedded decision: neither the MCP transport (SSE vs streamable
-      HTTP) nor the protocol version is fixed by the spec.* **The `mcp_initialize` deep
-      probe** — a real MCP `initialize` handshake through the hostname. Write this one
+- [ ] `[supervised]` — *the transport and endpoint are now measured (`POST /mcp`), but the
+      probe is a stateful three-request sequence and the list method has to be chosen from the
+      MCP's declared capabilities — see [ADR 0003](docs/decisions/0003-liveness-probe-must-carry-data.md).*
+      **The `mcp_responds` deep probe** — `initialize` → `notifications/initialized` →
+      `tools/list` (or the list method the capabilities allow), reusing `mcp-session-id`, with
+      the verdict read from the JSON-RPC **body**, never the HTTP status. Write this one
       *before* the happy path; it is what makes every later "it works" claim mean something
 - [ ] `[supervised]` — *the keychain lookup has a real machine side effect. The launcher's
       shape is no longer open — see [ADR 0002](docs/decisions/0002-launcher-is-a-hidden-subcommand.md)
@@ -100,7 +103,7 @@ Each gets triaged later → a **decision** (ADR), a **build** (PRD), a **milesto
       `mcp-proxy -e KEY VALUE` puts secrets in `argv` — never used; `--pass-environment` is the
       only safe channel. `ServiceSpec` and `Entry` aligned on the spec (2026-08-20)
 - [x] ADR 0001 resolved and Accepted: refuse on certainty, warn on ambiguity. Settling it
-      surfaced that the check reuses the `mcp_initialize` request rather than adding a probe,
+      surfaced that the check reuses the `initialize` request rather than adding a probe,
       and that the probe must authenticate or a correctly guarded user gets a red `status`
       (2026-08-20)
 - [x] Loop run #1: both backlog tasks delivered and verified — `ValidateName` /

@@ -32,3 +32,4 @@ No ADR needed for trivial choices or implementation details.
 | 0000 | Template | — | — |
 | [0001](0001-doctor-flags-unprotected-hostname.md) | `doctor` must flag an exposed hostname with no access policy | Accepted | 2026-08-20 |
 | [0002](0002-launcher-is-a-hidden-subcommand.md) | The launcher is a hidden subcommand, not a generated shell script | Accepted | 2026-08-20 |
+| [0003](0003-liveness-probe-must-carry-data.md) | The liveness probe must carry data back from the MCP | Accepted | 2026-08-21 |

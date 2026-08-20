@@ -130,7 +130,7 @@ even when it works.
    missing or dead, repair that, leave the rest. This is what makes re-running safe and
    `remove` the exact inverse of `ensure`.
 2. **Verify the effect, never trust the write.** `HealthReport` is a record of probes
-   actually run, never of files written. The `mcp_initialize` deep probe exists because a
+   actually run, never of files written. The `mcp_responds` deep probe exists because a
    proxy can be listening while the MCP inside it is dead. *A health check that cannot fail
    is worse than none — it manufactures confidence.*
 3. **Secrets never touch config, service files, or a command line.** References by name;

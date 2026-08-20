@@ -26,7 +26,9 @@ that alive, and expose it through an authenticated tunnel. Today that is a manua
 procedure — for one such server it is a **489-line guide**
 (`mcp-standardnotes/docs/remote-agent-bridge.md`). This tool *is* that guide,
 executed and **verified**: it does not trust that it wrote the files, it probes all
-the way to a real MCP `initialize` handshake before reporting success.
+the way to a live answer from the MCP itself before reporting success — a call that has to
+carry data back, because the proxy answers `initialize` and even `ping` on its own while the
+MCP behind it is dead ([ADR 0003](docs/decisions/0003-liveness-probe-must-carry-data.md)).
 
 ## Scope
 

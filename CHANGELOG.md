@@ -9,6 +9,9 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- ADR 0003 — the liveness probe must carry data back from the MCP. Measured against mcp-proxy
+  0.12.0: both `initialize` and `ping` are answered by the proxy, so neither detects a dead MCP;
+  a dead MCP also returns HTTP 200, so the verdict must be read from the JSON-RPC body.
 - ADR 0002 + `docs/SPEC-launcher.md` — the launcher is a hidden `__launch` subcommand of the
   binary, not a generated shell script; the environment handed to the MCP is constructed
   explicitly rather than inherited.
@@ -25,6 +28,9 @@ versions follow [Semantic Versioning](https://semver.org/).
 - Project bootstrapped with groundrules on 2026-08-20
 
 ### Changed
+- `HealthReport` check `mcp_initialize` renamed to `mcp_responds` — the old name asserted a
+  handshake that proves nothing about the MCP.
+- `docs/SPEC-primitive.md` corrected: its description of the deep probe was wrong.
 
 ### Deprecated
 

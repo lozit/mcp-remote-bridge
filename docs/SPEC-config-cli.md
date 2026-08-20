@@ -117,5 +117,5 @@ not a heuristic — with `--allow-public` to override. Anything ambiguous **warn
 blocking, so a broken tunnel never masquerades as a security failure. A generic failure is
 never read as "protected".
 
-This makes `mcp_initialize` carry credentials (a Cloudflare Access service token), otherwise a
+This makes the probe carry credentials (a Cloudflare Access service token), otherwise a
 user who correctly guards their MCP would get a permanently red `status`.

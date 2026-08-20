@@ -78,11 +78,37 @@ inverse.
 
 - is the proxy answering on `127.0.0.1:PORT`?
 - does the hostname resolve and respond?
-- **and the subtle trap**: the proxy can be up while the MCP inside it is dead. The
-  probe therefore goes all the way to a real MCP `initialize` handshake, not just
-  "the port is listening".
+- **and the subtle trap**: the proxy can be up while the MCP inside it is dead.
 
 A health check that cannot fail is worse than none — it manufactures confidence.
+
+### The trap is deeper than it looks (measured, 2026-08-21)
+
+An earlier draft of this spec answered the trap with "the probe goes all the way to a real MCP
+`initialize` handshake". **That does not work**, and finding out required killing a real MCP
+behind a real `mcp-proxy` rather than reasoning about it:
+
+| Probe | MCP alive | MCP killed |
+|---|---|---|
+| TCP connect to the port | ✓ | ✓ |
+| `initialize` | `result` | **`result`, complete, in 3 ms** |
+| `ping` | `result {}` | **`result {}`** |
+| `tools/list` | `result` | `error` |
+
+`mcp-proxy` answers `initialize` **itself**, from the state negotiated at startup; the request
+never reaches the child. `ping` — the method the protocol advertises for liveness — is served by
+the proxy too, which makes it the more dangerous of the two: its name promises exactly what it
+does not deliver.
+
+And underneath both: `tools/list` against a dead MCP still returns **HTTP 200**. The failure is
+in the JSON-RPC body. A probe reading the transport status is fooled a third time.
+
+**Therefore**: the probe must be a call that *carries data back from the MCP process*, and its
+verdict is read from the response **body**. See
+[ADR 0003](decisions/0003-liveness-probe-must-carry-data.md) for the sequence and the caveats.
+
+This is rule 2 applied to this spec's own first attempt at implementing rule 2. Treat it as the
+worked example: a check is not verified because it sounds thorough.
 
 ### 3. The secret path — never in config, never in the service file
 
@@ -106,16 +132,18 @@ A health check that cannot fail is worse than none — it manufactures confidenc
 
 ## `HealthReport`
 
-Per entry, a verdict with the evidence behind it: `proxy_listening`, `mcp_initialize`
-(the deep probe), `hostname_resolves`, `hostname_responds`, `service_loaded` — each a
-checked fact, plus the single derived `healthy: bool`. On failure it names *which*
-check failed and where, so a red result is actionable.
+Per entry, a verdict with the evidence behind it: `proxy_listening`, `mcp_responds`
+(the deep probe — see ADR 0003; **not** `mcp_initialize`, which proves nothing),
+`hostname_resolves`, `hostname_responds`, `service_loaded` — each a checked fact, plus the
+single derived `healthy: bool`. On failure it names *which* check failed and where, so a red
+result is actionable.
 
 ## Failure modes handled explicitly
 
 Port already in use · tunnel not running / not authenticated · referenced secret
 missing → fail clearly · MCP crashes on boot (proxy up, MCP dead) → caught by the
-`initialize` probe · hostname added but DNS not yet propagated → wait and verify.
+`mcp_responds` probe, and **only** by it · hostname added but DNS not yet propagated → wait and
+verify.
 
 ## Three seams, one implementation each in the MVP
 

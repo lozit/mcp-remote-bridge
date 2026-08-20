@@ -12,7 +12,7 @@ verifies it**.
 
 Success looks like: `mcp-remote-bridge apply` reconciles the machine to a declarative
 config, and `status` proves each entry healthy all the way down to a real MCP
-`initialize` handshake — not "the files were written". Run twice on a healthy entry →
+live answer from the MCP itself — not "the files were written". Run twice on a healthy entry →
 no-op; run on a drifted one → it repairs only what drifted.
 
 ## Users / personas
@@ -67,7 +67,7 @@ domain, ports and secrets are all inputs.
 - `ensure_exposed` and `remove_exposed` are **idempotent inverses**: a second `apply` on a
   healthy entry is a no-op; an `apply` on a drifted entry repairs only what drifted.
 - `HealthReport` carries **checked facts**, not claims — `proxy_listening`,
-  `mcp_initialize`, `hostname_resolves`, `hostname_responds`, `service_loaded`, plus the
+  `mcp_responds`, `hostname_resolves`, `hostname_responds`, `service_loaded`, plus the
   single derived `healthy`. A red result names *which* check failed and where.
 - The deep probe catches the subtle trap: **proxy up, MCP inside it dead**.
 - **No secret value** appears in `config.toml`, in a launchd plist, in `argv`, in the

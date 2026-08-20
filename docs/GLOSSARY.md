@@ -22,9 +22,11 @@ tool creates.
 
 ## D
 
-**Deep probe** — shorthand for the `mcp_initialize` check: driving a real MCP `initialize`
-handshake through the exposed hostname. Distinguished from a shallow "is the port
-listening?" check, which is exactly the check that misses a dead MCP behind a live proxy.
+**Deep probe** — shorthand for the `mcp_responds` check: a JSON-RPC call that must carry data
+back from the MCP process, read from the response body. Distinguished from a shallow "is the
+port listening?" check — and, less obviously, from `initialize` and `ping`, which mcp-proxy
+answers itself and which therefore also miss a dead MCP behind a live proxy
+([ADR 0003](decisions/0003-liveness-probe-must-carry-data.md)).
 
 **`doctor`** — the CLI command that checks **preconditions** (is `cloudflared` installed, is
 the tunnel authenticated, is `mcp-proxy` present, does the `SecretSource` answer) rather
@@ -55,7 +57,7 @@ this primitive once for itself instead of once per MCP.
 ## H
 
 **`HealthReport`** — the verdict for one entry, carrying the evidence behind it:
-`proxy_listening`, `mcp_initialize`, `hostname_resolves`, `hostname_responds`,
+`proxy_listening`, `mcp_responds`, `hostname_resolves`, `hostname_responds`,
 `service_loaded`, plus the derived `healthy: bool`. On failure it names *which* check failed
 and where. It is a record of probes run, never a record of files written.
 

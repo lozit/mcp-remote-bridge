@@ -24,7 +24,7 @@ const proxyHost = "127.0.0.1"
 // does not say where it looked is not actionable.
 //
 // This is the shallow check. It says nothing about whether the MCP behind the
-// proxy is alive — that is CheckMCPInitialize's job.
+// proxy is alive — that is CheckMCPResponds's job.
 func ProbeProxyListening(port int) Check {
 	addr := net.JoinHostPort(proxyHost, strconv.Itoa(port))
 	check := Check{Name: CheckProxyListening, Detail: addr}

@@ -20,7 +20,7 @@ func TestHealthyRequiresEveryCheck(t *testing.T) {
 	}{
 		{
 			name:   "all pass",
-			checks: []Check{{Name: CheckProxyListening, OK: true}, {Name: CheckMCPInitialize, OK: true}},
+			checks: []Check{{Name: CheckProxyListening, OK: true}, {Name: CheckMCPResponds, OK: true}},
 			want:   true,
 		},
 		{
@@ -30,7 +30,7 @@ func TestHealthyRequiresEveryCheck(t *testing.T) {
 				{Name: CheckProxyListening, OK: true},
 				{Name: CheckHostnameResolves, OK: true},
 				{Name: CheckHostnameResponds, OK: true},
-				{Name: CheckMCPInitialize, OK: false},
+				{Name: CheckMCPResponds, OK: false},
 			},
 			want: false,
 		},
@@ -48,14 +48,14 @@ func TestHealthyRequiresEveryCheck(t *testing.T) {
 func TestFailedNamesTheFailingChecks(t *testing.T) {
 	r := HealthReport{Entry: "test", Checks: []Check{
 		{Name: CheckProxyListening, OK: true},
-		{Name: CheckMCPInitialize, OK: false, Detail: "sn-mcp.example.com"},
+		{Name: CheckMCPResponds, OK: false, Detail: "sn-mcp.example.com"},
 	}}
 	failed := r.Failed()
 	if len(failed) != 1 {
 		t.Fatalf("Failed() returned %d checks, want 1", len(failed))
 	}
-	if failed[0].Name != CheckMCPInitialize {
-		t.Errorf("Failed() named %q, want %q", failed[0].Name, CheckMCPInitialize)
+	if failed[0].Name != CheckMCPResponds {
+		t.Errorf("Failed() named %q, want %q", failed[0].Name, CheckMCPResponds)
 	}
 	// A red result has to say where it looked, or it is not actionable.
 	if failed[0].Detail == "" {

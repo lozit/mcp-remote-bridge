@@ -18,7 +18,7 @@ perimeter".
 
 The gap that follows: **a successful `apply` and a green `status` say nothing about whether
 anything guards the hostname.** Every check in `HealthReport` — `proxy_listening`,
-`mcp_initialize`, `hostname_resolves`, `hostname_responds`, `service_loaded` — goes *greener*
+`mcp_responds`, `hostname_resolves`, `hostname_responds`, `service_loaded` — goes *greener*
 when the endpoint is wide open. A user who forgets the access policy gets an all-green table
 confirming their private notes are reachable by anyone who knows the URL.
 
@@ -53,7 +53,7 @@ switched off.
 The check is **not a separate probe**. With an access policy in front of a hostname, an
 unauthenticated request is redirected to the identity provider (302 to
 `<team>.cloudflareaccess.com`) or refused (403). With no policy, it reaches the proxy and the
-MCP answers. So the signal is the `mcp_initialize` request, sent twice:
+MCP answers. So the signal is the `initialize` **request**, sent twice:
 
 | With credentials | Without credentials | Verdict |
 |---|---|---|
@@ -69,7 +69,7 @@ absence of evidence.
 
 ### Consequence the original draft missed
 
-`mcp_initialize` must be able to **authenticate** (a Cloudflare Access service token). Without
+The probe must be able to **authenticate** (a Cloudflare Access service token). Without
 that, a user who has done the right thing — a policy in front of their MCP — gets a permanently
 red `status`, because the deep probe eats the 302. Access support is therefore not a
 nice-to-have for Milestone 2; it is what makes the probe work at all for a correctly configured
@@ -117,9 +117,15 @@ user. Its absence would have punished exactly the users this ADR is written to p
 ## Notes
 
 - Raised in `docs/SECURITY.md` → "Authentication" as an open question, then promoted here.
+- **Still valid after [ADR 0003](0003-liveness-probe-must-carry-data.md)**, which found that
+  `initialize` does not reach the MCP. That does not weaken this ADR: the access-policy check
+  asks whether an unauthenticated HTTP request *crosses the policy*, not whether the MCP is
+  alive. `initialize` answers that perfectly. Liveness needs a different call — two distinct
+  questions over the same connection. The check formerly written `mcp_initialize` is now
+  `mcp_responds`; the request this ADR relies on is still `initialize`.
 - Milestone 2 in `docs/ROADMAP.md` carries the requirement.
 - Resolved 2026-08-20. The sub-decision turned on a finding made while settling it: the check
-  reuses the `mcp_initialize` request rather than adding a probe, which removes the
+  reuses the `initialize` request rather than adding a probe, which removes the
   "heuristic" objection that had argued for warn-only.
 - Related: load-bearing rule 2 (`docs/SPEC-primitive.md`) — a check that cannot fail
   manufactures confidence; a green table over an open endpoint is the same defect wearing a

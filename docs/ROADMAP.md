@@ -49,7 +49,7 @@ gateway.
   `apply` **refuses** when an unauthenticated `initialize` succeeds — proof the door is open —
   with `--allow-public` as the explicit override; it **warns** on any ambiguous signal rather
   than blocking on a broken tunnel.
-- **Consequence — the deep probe must authenticate.** `mcp_initialize` needs Cloudflare Access
+- **Consequence — the deep probe must authenticate.** `mcp_responds` needs Cloudflare Access
   service-token support, otherwise a user who correctly put a policy in front of their MCP gets
   a permanently red `status` (the probe eats the 302). This is what makes the probe work at all
   for a correctly configured user, so it lands with this milestone.

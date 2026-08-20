@@ -63,12 +63,17 @@ and logs at a known path.
 ### `HealthReport` — the verification component
 
 Not a status struct: a **record of probes actually run**. `proxy_listening`,
-`mcp_initialize`, `hostname_resolves`, `hostname_responds`, `service_loaded`, plus the
+`mcp_responds`, `hostname_resolves`, `hostname_responds`, `service_loaded`, plus the
 single derived `healthy: bool`.
 
-`mcp_initialize` is the load-bearing one. The proxy can be listening while the MCP inside
-it is dead, so the probe goes all the way to a real MCP `initialize` handshake rather than
-stopping at "the port is open".
+`mcp_responds` is the load-bearing one. The proxy can be listening while the MCP inside it is
+dead, so the probe must be a JSON-RPC call that **carries data back from the MCP process**, with
+the verdict read from the response body — never the HTTP status, which is `200` even for a dead
+MCP.
+
+It is not `initialize`, and not `ping`: measured against mcp-proxy 0.12.0, the proxy answers
+both itself and neither can fail when the MCP is dead. See
+[ADR 0003](decisions/0003-liveness-probe-must-carry-data.md).
 
 ### The three seams
 
@@ -121,7 +126,7 @@ repo without leaking anything.
 Load config → for each entry, `ensure_exposed`:
 resolve port (auto-assign if absent) → ensure the proxy service (generate the launcher,
 write the plist, `bootstrap`) → ensure the ingress rule + DNS route → **probe**, including
-the `initialize` handshake → return the `HealthReport`.
+the `mcp_responds` deep probe → return the `HealthReport`.
 Print the table; exit `0` / `1` / `2`.
 
 Already healthy → every step is a no-op and only the probe runs. Drifted → only the drifted

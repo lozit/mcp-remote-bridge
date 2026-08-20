@@ -33,7 +33,7 @@ one**. That is the risk it introduces, and it is deliberate. Two consequences:
   those credentials.
 - ⚠️ **An unprotected hostname is refused, not just reported — a Milestone 2 requirement.**
   Every `HealthReport` check goes *greener* when the endpoint is wide open, so nothing else in
-  the tool catches this. The check reuses the `mcp_initialize` request rather than adding a
+  the tool catches this. The check reuses the probe's `initialize` request rather than adding a
   probe: sent **without credentials**, a success proves the door is open and `apply` fails
   (`--allow-public` overrides); an ambiguous result warns.
   **Never read a generic failure as "protected"** — a dead tunnel or an unpropagated DNS record

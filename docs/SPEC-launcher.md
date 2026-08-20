@@ -87,9 +87,13 @@ mcp-proxy --host 127.0.0.1 --port <PORT> --pass-environment -- <command> <args..
 > It is the exact shape of the trap rule 3 exists to close: the simplest way to supply the
 > secret is the exposing way.
 
-**To verify before implementing**: which endpoint path mcp-proxy serves for a given transport
-(`/sse` vs `/mcp`, and whether `--stateless` matters). The `mcp_initialize` probe and the
-Cloudflare ingress rule both need the exact URL, and neither should be guessed.
+**Verified 2026-08-21** (mcp-proxy 0.12.0): the streamable-HTTP endpoint is **`/mcp`**, and a
+single `POST` there completes an `initialize`. `/sse` also exists but needs a long-lived stream
+plus a separate POST. `GET /` is a 404. The probe uses `/mcp`; the ingress rule routes the whole
+hostname, so it carries no path constraint.
+
+Beware what that `initialize` does **not** prove — see
+[ADR 0003](decisions/0003-liveness-probe-must-carry-data.md).
 
 ## The service definition (launchd)
 
@@ -131,7 +135,8 @@ against the recorded path.
 **Port already in use.** Detected at `apply`, before writing the service.
 
 **The MCP crashes on boot** while mcp-proxy stays up. Invisible to every check except the
-`mcp_initialize` deep probe. This is the trap that motivates the whole probe design.
+`mcp_responds` deep probe — and *only* by it, since the proxy answers `initialize` and `ping`
+on its own. This is the trap that motivates the whole probe design.
 
 ## Deferred
 
