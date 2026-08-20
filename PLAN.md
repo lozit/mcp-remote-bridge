@@ -40,12 +40,12 @@ seams plus `Entry` / `HealthReport` are declared with stubs returning
 - [ ] `[supervised]` — *remaining on the probe: attach Cloudflare Access credentials (the
       `decorate` hook exists and is unused), and exercise it through a real hostname rather than
       loopback.* The `mcp_responds` probe itself is **done**.
-- [ ] `[supervised]` — *the keychain lookup has a real machine side effect. The launcher's
-      shape is no longer open — see [ADR 0002](docs/decisions/0002-launcher-is-a-hidden-subcommand.md)
-      and [`docs/SPEC-launcher.md`](docs/SPEC-launcher.md).* `KeychainSecretSource` + the
-      `__launch` subcommand (resolve secrets, build a minimal explicit environment,
-      `syscall.Exec` mcp-proxy with `--pass-environment`, never `-e`).
-      **Do this before anything needs a secret** — rule 3
+- [x] `KeychainSecretSource` — **done** (ADR 0004: `-g`, not `-w`).
+- [ ] `[supervised]` — **blocked on the config parser**: `__launch <name> --config <path>` has to
+      load the TOML config, which is Milestone 2 work and needs a TOML dependency (an ADR, per the
+      invariant on adding dependencies). Decide: pull the config parser forward, or give `__launch`
+      a narrower input for now. The `__launch` subcommand itself (resolve secrets, build a minimal
+      explicit environment, `syscall.Exec` mcp-proxy with `--pass-environment`, never `-e`)
 - [ ] `[supervised]` — *`bootstrap`/`bootout`/`Status` drive real launchd state.*
       `LaunchdManager` — `bootstrap` / `bootout`, `Status`
 - [ ] **Plist generation is now loop-safe** — the dependency that blocked it is resolved:

@@ -58,6 +58,21 @@ Everything else is dropped. What the MCP receives is a list written in the confi
 whatever launchd happened to hold. An MCP that silently depended on an inherited variable
 **will break** — loudly, fixed by one config line. That is the intended trade.
 
+### Reading a secret (`KeychainSecretSource`)
+
+`security find-generic-password -g -s <service>`, parsing **stderr**. Not `-w`: measured, `-w`
+prints a bare hex string for any value containing a non-printable-ASCII byte — an accent, a tab,
+a newline, a backslash — and that output is **indistinguishable** from a value that literally is
+that hex string. An accented password or a PEM key would reach the MCP corrupted, with nothing
+logged, because the secret *was* found and *was* injected. See
+[ADR 0004](decisions/0004-keychain-read-must-use-g-not-w.md).
+
+A missing item is exit code **44** and must surface as a named "not found", never an empty
+value.
+
+**The write side has the mirror trap**: `security add-generic-password -w <value>` puts the
+secret in `argv`. `set-secret` must not shell out that way — it is the CLI-level half of rule 3.
+
 ### What the launcher must never do
 
 - **Never log a secret value.** Errors name the *key*, never the value. This includes the

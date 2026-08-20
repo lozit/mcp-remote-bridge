@@ -1,0 +1,28 @@
+# ggshield configuration.
+#
+# The exceptions below are all in internal/keychain/, which exists to parse the
+# output of `security find-generic-password -g`. That output looks like:
+#
+#     password: "abc123"
+#     password: 0x636166C3A9  "caf\303\251"
+#
+# so the package's doc comments and its parser fixtures necessarily contain the
+# literal text `password: "..."`. The values are test data (`abc123`, a hex
+# string, `junk`) and are nobody's credentials.
+#
+# The fixtures cannot be reworded: they assert that we parse the exact shape
+# security(1) emits, so changing them to satisfy the scanner would make the
+# tests stop testing the real format.
+#
+# Scoped to these four fingerprints on purpose, rather than ignoring the path or
+# skipping the hook: a genuine secret committed to these same files is still
+# caught.
+version: 2
+secret:
+  ignored-matches:
+    - name: 'keychain parser doc comment - security(1) output shape'
+      match: e6f88cb2eeb44820c7c349d20cb298acbeb605e394dc2ddae2630f51e5f949cf
+    - name: 'keychain parser fixture - hex-shaped value must not be decoded'
+      match: 7bd052747359e79fa17ce7c303852816b330f64602fbe4a92ba46e06dfc57988
+    - name: 'keychain parser fixture - malformed input, error path'
+      match: 98b91d98d8b844ba2d54097694c8470e661a84eb0fc28ed7b7eae6e4db897ecb

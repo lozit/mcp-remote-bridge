@@ -12,6 +12,28 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Round-trip every byte class through an external tool before trusting its output
+
+**Why**: `security find-generic-password -w` prints a password on stdout, which is exactly what
+a `SecretSource` wants — for printable ASCII. Any other byte (an accent, a tab, a newline, a
+backslash) makes it print a **bare hex string with no marker**, and storing the literal string
+`636166c3a9` produces the same output as storing `café`. The ambiguity is irreducible: the
+information is gone before the caller sees it.
+
+Shipping that would have corrupted an accented password or a PEM private key into an ASCII hex
+string, with **nothing to debug from**: the secret was found, it was injected, and the value is
+correctly never logged. `-g` disambiguates with a `0x` prefix.
+
+**When to apply**: whenever a value crosses a process boundary through a tool's *human-readable*
+output — a CLI, a formatter, a serialiser. Do not test the happy path and generalise. Round-trip
+a table of byte classes: plain ASCII, spaces, accents, tab, newline, backslash, quote, emoji, and
+**a value that looks like the encoded form** (that last one is what catches an ambiguous
+encoding rather than merely a lossy one).
+
+The same test table caught it and proves the fix: reverting to `-w` fails four of twelve cases.
+Write the mutation check, not just the assertion — a test that has never been observed failing
+has not been verified.
+
 ## Verify an external tool's behaviour by killing something, not by reading its docs
 
 **Why**: `SPEC-primitive.md` named the trap "the proxy can be up while the MCP inside it is

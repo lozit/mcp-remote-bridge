@@ -9,6 +9,10 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- `KeychainSecretSource` — resolves `keychain:<service>` references via `security -g`, with a
+  round-trip test over every byte class (accents, tabs, newlines, PEM keys, emoji) and a named
+  error for a missing secret.
+- ADR 0004 — read keychain secrets with `security -g`, never `-w`.
 - `ProbeMCPResponds` — the deep liveness probe, with an integration harness that runs a real
   mcp-proxy and requires the probe to go red when the MCP is killed.
 - ADR 0003 — the liveness probe must carry data back from the MCP. Measured against mcp-proxy

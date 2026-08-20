@@ -88,6 +88,10 @@ Four hard invariants:
 Consequently the value transits **neither the config, nor the service file, nor a command
 line, nor a shell's environment**.
 
+- **Reading**: `security find-generic-password -g`, never `-w` — `-w`'s output is lossy and
+  ambiguous for any non-printable-ASCII byte, which would corrupt an accented password or a PEM
+  key silently ([ADR 0004](decisions/0004-keychain-read-must-use-g-not-w.md)). The `-g` output
+  carries the secret on **stderr**: whatever buffer captures it must never reach a logger.
 - **Where secrets live**: the macOS keychain (MVP). Linux gets libsecret or a `600` env
   file behind the same `SecretSource` interface — deferred.
 - **How a secret gets in**: `mcp-remote-bridge set-secret <key>`, reading from a **masked
