@@ -1,0 +1,141 @@
+<!-- generated-by: groundrules v1.10.0 -->
+# Spec — the launcher and the service definition
+
+**Status**: draft · **Date**: 2026-08-20 · **Language**: Go 1.24
+
+How a declared [`entry`](SPEC-primitive.md) becomes a running, supervised process — and where
+rule 3 (the secret path) stops being a principle and becomes code.
+
+The shape decision is [ADR 0002](decisions/0002-launcher-is-a-hidden-subcommand.md): the
+launcher is a **hidden subcommand of the binary**, not a generated shell script.
+
+## The chain
+
+```
+launchd
+  └─ exec  mcp-remote-bridge __launch <name> --config <path>     ← the launcher
+       │     resolves secrets via SecretSource, builds the environment
+       └─ syscall.Exec  mcp-proxy --host 127.0.0.1 --port <P> --pass-environment -- <command> <args...>
+            └─ spawns   <command> <args...>                       ← the stdio MCP
+                        (inherits the environment, including the secrets)
+```
+
+`syscall.Exec` **replaces** the launcher process rather than forking, so launchd supervises
+`mcp-proxy` directly: one process, an honest PID, no signal forwarding to get wrong.
+
+## The launcher
+
+### Contract
+
+```
+mcp-remote-bridge __launch <name> --config <path>
+```
+
+Hidden from `--help` (it is not for humans), but it is still a public entry point of a public
+binary, so it must be safe to run by hand.
+
+Steps, in order:
+
+1. Load the config at `<path>`; find the entry named `<name>`. Absent → exit non-zero,
+   naming the entry and the config path.
+2. **Resolve every referenced secret** through the `SecretSource`. Any failure → exit non-zero
+   **before launching anything**, naming the *key* that failed. Never launch a proxy that will
+   401 silently.
+3. Build the environment (below).
+4. `syscall.Exec` `mcp-proxy` with the arguments below.
+
+### The environment is constructed, not inherited
+
+The launcher does **not** pass `os.Environ()` through. It builds exactly:
+
+| Source | Contents |
+|---|---|
+| Fixed | `PATH`, `HOME` |
+| Declared by the entry | any `env` the entry lists (plain, non-secret values) |
+| Resolved | one variable per `secrets` entry: the declared name → the fetched value |
+
+Everything else is dropped. What the MCP receives is a list written in the config, not
+whatever launchd happened to hold. An MCP that silently depended on an inherited variable
+**will break** — loudly, fixed by one config line. That is the intended trade.
+
+### What the launcher must never do
+
+- **Never log a secret value.** Errors name the *key*, never the value. This includes the
+  error path, which is the one people forget.
+- **Never place a value in `argv`** — see the mcp-proxy note below.
+- **Never write a value to disk**, including a temp file or a debug dump.
+
+## Invoking mcp-proxy
+
+```
+mcp-proxy --host 127.0.0.1 --port <PORT> --pass-environment -- <command> <args...>
+```
+
+- **`--host 127.0.0.1` is passed explicitly**, even though it is mcp-proxy's default. Loopback
+  binding is a security control here, and a control that relies on someone else's default is
+  one upstream release away from being gone.
+- **`--port <PORT>`** is always explicit; omitted, mcp-proxy picks a random port and the ingress
+  rule would point at nothing.
+- **`--pass-environment`** is how the secrets reach the MCP: mcp-proxy forwards its own
+  environment to the process it spawns. Since the launcher constructed that environment, the
+  forwarding is bounded.
+- **`--`** separates the proxy's flags from the MCP's command, so an MCP argument can never be
+  eaten as a proxy flag.
+
+> **Never use `mcp-proxy -e KEY VALUE`.** It is the most prominent example in mcp-proxy's own
+> `--help`, and it puts each value in `argv`, where `ps` exposes it to every local account.
+> It is the exact shape of the trap rule 3 exists to close: the simplest way to supply the
+> secret is the exposing way.
+
+**To verify before implementing**: which endpoint path mcp-proxy serves for a given transport
+(`/sse` vs `/mcp`, and whether `--stateless` matters). The `mcp_initialize` probe and the
+Cloudflare ingress rule both need the exact URL, and neither should be guessed.
+
+## The service definition (launchd)
+
+`ServiceSpec` → `~/Library/LaunchAgents/<label>.plist`, loaded with `launchctl bootstrap`.
+
+| Field | Value |
+|---|---|
+| `Label` | derived from the entry name (see the naming rules) |
+| `ProgramArguments` | the absolute path of the `mcp-remote-bridge` binary, then `__launch`, `<name>`, `--config`, `<path>` |
+| `RunAtLoad` | true |
+| `KeepAlive` | true — a dead proxy must come back |
+| `ThrottleInterval` | generous (≥ 60s), so an unrecoverable failure fails slowly rather than spinning |
+| `StandardOutPath` / `StandardErrorPath` | the entry's known log paths |
+
+**The plist is world-readable, and it contains no secret** — only a name and a config path.
+That is the whole reason the launcher exists.
+
+**The binary path is resolved at `apply` time** via `os.Executable()` and written absolute.
+Consequence: moving or uninstalling the binary breaks every service. `doctor` checks the
+recorded path still exists.
+
+## Failure modes handled explicitly
+
+**A referenced secret is missing.** Two gates, on purpose:
+
+1. **At `apply`** — `ensure_exposed` resolves every reference *before* writing the service. A
+   missing secret fails the apply loudly; nothing is written, nothing is loaded. This is the
+   primary gate, and it is where rule 3's "fail loudly at start" lives.
+2. **At launch** — the secret may have been deleted since. The launcher exits non-zero naming
+   the key, before starting the proxy.
+
+Because `KeepAlive` is true, case 2 makes launchd retry; `ThrottleInterval` keeps that to a
+slow, visible loop rather than a spin. `status` reports the service as loaded but
+`proxy_listening` red, and the log names the missing key — a diagnosable state, not a mystery.
+
+**The binary moved or was uninstalled.** Every service fails at exec. `doctor` reports it
+against the recorded path.
+
+**Port already in use.** Detected at `apply`, before writing the service.
+
+**The MCP crashes on boot** while mcp-proxy stays up. Invisible to every check except the
+`mcp_initialize` deep probe. This is the trap that motivates the whole probe design.
+
+## Deferred
+
+**See [`ROADMAP.md`](ROADMAP.md)** — the consolidated source for post-MVP scope. In short: a
+`SystemdManager` writing a unit file instead of a plist arrives with Milestone 4, behind the
+unchanged `ServiceManager` interface, and the launcher subcommand is reused as-is (its only
+OS-specific dependency is the `SecretSource` behind it).

@@ -9,6 +9,9 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- ADR 0002 + `docs/SPEC-launcher.md` — the launcher is a hidden `__launch` subcommand of the
+  binary, not a generated shell script; the environment handed to the MCP is constructed
+  explicitly rather than inherited.
 - `ValidateName` / `ValidateSubdomain` — strict charset validation for an entry name and
   subdomain (length 1..63, `a-z0-9-`, no leading/trailing hyphen). Invalid input is rejected,
   never sanitized: the name becomes a service label, a hostname component and a log path.

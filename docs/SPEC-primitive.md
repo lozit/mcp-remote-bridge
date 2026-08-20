@@ -90,9 +90,13 @@ A health check that cannot fail is worse than none — it manufactures confidenc
   a value.
 - The service file (a launchd plist, later a systemd unit) carries **no** secret in
   cleartext — those files are readable.
-- The secret is fetched **at launch time**: a generated launcher asks the
-  `SecretSource` immediately before `exec`, injects it into the process environment,
-  and the value transits neither the config, nor the service file, nor a command line.
+- The secret is fetched **at launch time**: the launcher asks the `SecretSource`
+  immediately before `exec`, injects it into the process environment, and the value transits
+  neither the config, nor the service file, nor a command line. The launcher is a hidden
+  subcommand of the binary, not a generated script — see
+  [ADR 0002](decisions/0002-launcher-is-a-hidden-subcommand.md) and
+  [`SPEC-launcher.md`](SPEC-launcher.md) for the mechanics, including why
+  `mcp-proxy -e KEY VALUE` is never used.
 - A referenced secret that is **absent** makes the primitive **fail loudly at start**
   — it does not launch a proxy that will 401 silently.
 

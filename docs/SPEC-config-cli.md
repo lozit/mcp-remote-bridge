@@ -39,6 +39,19 @@ secrets   = { LIBRELINKUP_EMAIL = "keychain:mcp-freestyle-email" }
 `[mcp.<name>]` maps one-to-one onto the primitive's `entry`. `[infra]` supplies the
 shared `tunnel`/`domain` so each entry does not repeat them.
 
+An entry may also declare a plain `env` table for **non-secret** variables:
+
+```toml
+[mcp.standardnotes.env]
+SN_SERVER = "https://sync.example.com"
+```
+
+This exists because the launcher builds a **minimal, explicit** environment rather than
+inheriting the ambient one ([ADR 0002](decisions/0002-launcher-is-a-hidden-subcommand.md)):
+an MCP that needs a variable must have it written here. The trade is deliberate — a missing
+variable fails loudly and is fixed by one line, instead of the MCP silently receiving whatever
+launchd happened to hold.
+
 ## The CLI
 
 `mcp-remote-bridge <command>`. Every command loads the config, then acts through the

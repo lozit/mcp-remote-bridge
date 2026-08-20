@@ -20,6 +20,17 @@ type Entry struct {
 	Command string
 	Args    []string
 
+	// Env holds plain, non-secret environment variables the MCP needs.
+	//
+	// It exists because the launcher builds a minimal, explicit environment
+	// rather than inheriting the ambient one (ADR 0002): a variable the MCP
+	// depends on must be written here. A missing one fails loudly and is fixed
+	// by one config line, which is the intended trade against an MCP silently
+	// receiving whatever launchd happened to hold.
+	//
+	// Never put a secret here — use Secrets.
+	Env map[string]string
+
 	// Secrets maps an environment variable name to a SecretSource key
 	// (e.g. "SN_EMAIL" -> "keychain:mcp-sn-email").
 	//

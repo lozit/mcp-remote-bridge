@@ -41,16 +41,20 @@ seams plus `Entry` / `HealthReport` are declared with stubs returning
       HTTP) nor the protocol version is fixed by the spec.* **The `mcp_initialize` deep
       probe** — a real MCP `initialize` handshake through the hostname. Write this one
       *before* the happy path; it is what makes every later "it works" claim mean something
-- [ ] `[supervised]` — *compound, and both halves fail the bar: the keychain lookup has a
-      real machine side effect, and the launcher's shape (shell, injection mechanism) is an
-      open design decision.* `KeychainSecretSource` + the generated launcher (fetch at
-      `exec` time, inject into the environment). **Do this before anything needs a secret**
-      — rule 3
-- [ ] `[supervised]` — *`bootstrap`/`bootout`/`Status` drive real launchd state. Plist
-      generation alone would be loop-safe (a pure function, testable against its output),
-      but its `Program` field points at the launcher above, which does not exist yet — the
-      unresolved dependency is the embedded decision. Revisit once the launcher is decided.*
-      `LaunchdManager` — plist generation, `bootstrap` / `bootout`, `Status`
+- [ ] `[supervised]` — *the keychain lookup has a real machine side effect. The launcher's
+      shape is no longer open — see [ADR 0002](docs/decisions/0002-launcher-is-a-hidden-subcommand.md)
+      and [`docs/SPEC-launcher.md`](docs/SPEC-launcher.md).* `KeychainSecretSource` + the
+      `__launch` subcommand (resolve secrets, build a minimal explicit environment,
+      `syscall.Exec` mcp-proxy with `--pass-environment`, never `-e`).
+      **Do this before anything needs a secret** — rule 3
+- [ ] `[supervised]` — *`bootstrap`/`bootout`/`Status` drive real launchd state.*
+      `LaunchdManager` — `bootstrap` / `bootout`, `Status`
+- [ ] **Plist generation is now loop-safe** — the dependency that blocked it is resolved:
+      `Program` is the binary's absolute path and `Args` are `__launch <name> --config <path>`
+      ([`docs/SPEC-launcher.md`](docs/SPEC-launcher.md) fixes every key). A pure
+      `ServiceSpec` → XML function, testable against its output, including the invariant that
+      no secret appears in it. **Candidate for the next `/groundrules:realize`** — it needs a
+      red acceptance test first.
 - [ ] `[supervised]` — *real network and DNS side effects on a shared tunnel; not a
       bounded blast radius.* `CloudflaredExposer` — ingress rule + `cloudflared tunnel route
       dns`
@@ -90,6 +94,11 @@ Each gets triaged later → a **decision** (ADR), a **build** (PRD), a **milesto
 
 ## Recently done
 
+- [x] Launcher specified: [ADR 0002](docs/decisions/0002-launcher-is-a-hidden-subcommand.md)
+      (hidden `__launch` subcommand, not a generated shell script) and
+      [`docs/SPEC-launcher.md`](docs/SPEC-launcher.md). Found while specifying it that
+      `mcp-proxy -e KEY VALUE` puts secrets in `argv` — never used; `--pass-environment` is the
+      only safe channel. `ServiceSpec` and `Entry` aligned on the spec (2026-08-20)
 - [x] ADR 0001 resolved and Accepted: refuse on certainty, warn on ambiguity. Settling it
       surfaced that the check reuses the `mcp_initialize` request rather than adding a probe,
       and that the probe must authenticate or a correctly guarded user gets a red `status`

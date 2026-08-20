@@ -80,7 +80,9 @@ Four hard invariants:
 |---|---|
 | The config carries secret **references** (a `SecretSource` key), never values | config parsing — reject a value-shaped secret field |
 | The service file (launchd plist, later a systemd unit) carries **no** cleartext secret — those files are world-readable | plist generation |
-| The value is fetched **at launch time** by the generated launcher, immediately before `exec`, and injected into the process environment | the launcher |
+| The value is fetched **at launch time** by the launcher, immediately before `exec`, and injected into the process environment | the launcher (`__launch`, [ADR 0002](decisions/0002-launcher-is-a-hidden-subcommand.md)) |
+| The proxy is invoked with `--pass-environment`, **never** `mcp-proxy -e KEY VALUE` — the latter puts the value in `argv`, where `ps` exposes it to every local account | launcher argument construction |
+| The environment handed to the MCP is **constructed, not inherited**: `PATH`, `HOME`, the entry's declared variables, the resolved secrets, nothing else | the launcher |
 | A referenced-but-absent secret **fails loudly at start** — never a proxy that 401s silently | `ensure_exposed` |
 
 Consequently the value transits **neither the config, nor the service file, nor a command
@@ -99,6 +101,9 @@ line, nor a shell's environment**.
 
 Secret values, obviously — but also the full `argv` of the launched MCP, and any HTTP
 request body from the `initialize` probe. Log the *shape* of a failure, not its payload.
+
+The launcher's **error path** is the one people forget: a missing or unreadable secret is
+reported by *key name*, never by value, and never by dumping the environment it had built.
 
 ## Attack surface and controls
 

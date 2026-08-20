@@ -1,5 +1,7 @@
 package bridge
 
+import "time"
+
 // The three seams. The primitive talks only to these interfaces, so OS,
 // exposer and secret-store variety is additive later rather than a rewrite.
 //
@@ -40,21 +42,27 @@ type SecretSource interface {
 // ServiceSpec describes what the service manager should keep alive.
 //
 // Note what is absent: there is no environment map of secret values. The
-// service file is world-readable, so it carries none. Program points at the
-// generated launcher, which resolves SecretRefs through a SecretSource and
-// injects them into the process environment immediately before exec.
+// service file is world-readable, so it carries none. Program points at this
+// binary and Args select the __launch subcommand, which resolves the entry's
+// secret references through a SecretSource and injects them into the process
+// environment immediately before exec. See docs/SPEC-launcher.md and ADR 0002.
 type ServiceSpec struct {
 	// Label is the service identifier (a launchd label, later a systemd unit name).
 	Label string
 
-	// Program and Args are what the service manager execs — for an exposed
-	// entry this is the generated launcher, not the MCP itself.
+	// Program is the absolute path of the mcp-remote-bridge binary, resolved at
+	// apply time via os.Executable.
+	//
+	// It is absolute on purpose: the service outlives the shell that created it.
+	// The consequence is that moving or uninstalling the binary breaks every
+	// service, which is why doctor checks this path still exists.
 	Program string
-	Args    []string
 
-	// SecretRefs maps an environment variable name to a SecretSource key.
-	// NAMES ONLY — a value here would defeat load-bearing rule 3.
-	SecretRefs map[string]string
+	// Args select the launcher: __launch <name> --config <path>.
+	//
+	// Everything here lands in a world-readable service file, so it carries a
+	// name and a path and nothing else.
+	Args []string
 
 	// StdoutPath and StderrPath are the known log paths.
 	StdoutPath string
@@ -62,6 +70,13 @@ type ServiceSpec struct {
 
 	// KeepAlive asks the service manager to restart the program when it dies.
 	KeepAlive bool
+
+	// ThrottleInterval bounds how fast a repeatedly-failing program is retried.
+	//
+	// It matters for the unrecoverable case: a secret deleted after apply makes
+	// the launcher exit before starting the proxy, and KeepAlive would otherwise
+	// spin on it. A slow, visible loop is diagnosable; a spin is noise.
+	ThrottleInterval time.Duration
 }
 
 // ServiceState is what a ServiceManager knows about a label right now.
