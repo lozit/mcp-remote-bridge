@@ -1,5 +1,7 @@
 package bridge
 
+import "time"
+
 // CheckName identifies one probe in a HealthReport.
 type CheckName string
 
@@ -72,3 +74,7 @@ func (r HealthReport) Failed() []Check {
 	}
 	return out
 }
+
+// ProxyDialTimeout bounds the TCP dial in ProbeProxyListening. A probe that can
+// hang is a probe that never reports.
+const ProxyDialTimeout = 2 * time.Second
