@@ -30,4 +30,4 @@ No ADR needed for trivial choices or implementation details.
 | # | Title | Status | Date |
 |---|---|---|---|
 | 0000 | Template | — | — |
-| [0001](0001-doctor-flags-unprotected-hostname.md) | `doctor` must flag an exposed hostname with no access policy | Proposed | 2026-08-20 |
+| [0001](0001-doctor-flags-unprotected-hostname.md) | `doctor` must flag an exposed hostname with no access policy | Accepted | 2026-08-20 |

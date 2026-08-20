@@ -98,6 +98,11 @@ and every check in `HealthReport` goes *greener* when the endpoint is wide open 
 table over an unprotected hostname is manufactured confidence, the defect load-bearing rule
 2 exists to prevent.
 
-Warn-only versus refuse-with-`--allow-public` is unresolved; see
-[ADR 0001](decisions/0001-doctor-flags-unprotected-hostname.md), to be settled before this
-layer ships.
+**Resolved** ([ADR 0001](decisions/0001-doctor-flags-unprotected-hostname.md), Accepted):
+`apply` **refuses** when an unauthenticated `initialize` succeeds — that is proof of openness,
+not a heuristic — with `--allow-public` to override. Anything ambiguous **warns** instead of
+blocking, so a broken tunnel never masquerades as a security failure. A generic failure is
+never read as "protected".
+
+This makes `mcp_initialize` carry credentials (a Cloudflare Access service token), otherwise a
+user who correctly guards their MCP would get a permanently red `status`.

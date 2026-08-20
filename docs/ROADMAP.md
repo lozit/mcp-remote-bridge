@@ -44,10 +44,15 @@ gateway.
   warning. `mcp-nightscout` is CGM data and `mcp-standardnotes` is private notes; a green
   `status` over an open endpoint is manufactured confidence, which is the exact defect
   load-bearing rule 2 exists to prevent. **Not deferrable to post-MVP** — shipping a v0.1
-  that can silently expose health data is not acceptable. Whether the tool merely *warns*
-  or *refuses* (with an `--allow-public` override) is the open sub-decision.
-  → [ADR 0001](decisions/0001-doctor-flags-unprotected-hostname.md), to resolve before this
-  milestone ships.
+  that can silently expose health data is not acceptable.
+  **Resolved** ([ADR 0001](decisions/0001-doctor-flags-unprotected-hostname.md), Accepted):
+  `apply` **refuses** when an unauthenticated `initialize` succeeds — proof the door is open —
+  with `--allow-public` as the explicit override; it **warns** on any ambiguous signal rather
+  than blocking on a broken tunnel.
+- **Consequence — the deep probe must authenticate.** `mcp_initialize` needs Cloudflare Access
+  service-token support, otherwise a user who correctly put a policy in front of their MCP gets
+  a permanently red `status` (the probe eats the 302). This is what makes the probe work at all
+  for a correctly configured user, so it lands with this milestone.
 - **Status**: Upcoming
 - **Spec**: [`SPEC-config-cli.md`](SPEC-config-cli.md)
 

@@ -31,13 +31,16 @@ one**. That is the risk it introduces, and it is deliberate. Two consequences:
 - **Of the tunnel to Cloudflare**: `cloudflared`'s own credentials, a **precondition** —
   the tunnel is created and authenticated before the tool runs, and the tool never handles
   those credentials.
-- ⚠️ **`doctor` must flag an unprotected hostname — a Milestone 2 requirement.** An exposed
-  hostname that answers with no access policy in front of it must be surfaced, at minimum as
-  a warning. Note that every `HealthReport` check goes *greener* when the endpoint is wide
-  open, so nothing else in the tool will catch this. Warn-only vs refuse-by-default (with
-  `--allow-public`) is the open sub-decision, and detection is best-effort and heuristic —
-  never phrase it as a guarantee.
-  → [ADR 0001](decisions/0001-doctor-flags-unprotected-hostname.md).
+- ⚠️ **An unprotected hostname is refused, not just reported — a Milestone 2 requirement.**
+  Every `HealthReport` check goes *greener* when the endpoint is wide open, so nothing else in
+  the tool catches this. The check reuses the `mcp_initialize` request rather than adding a
+  probe: sent **without credentials**, a success proves the door is open and `apply` fails
+  (`--allow-public` overrides); an ambiguous result warns.
+  **Never read a generic failure as "protected"** — a dead tunnel or an unpropagated DNS record
+  fails exactly like a policy would. Only a positive authentication signature (a redirect to an
+  IdP, a 403 from Cloudflare) may be read as guarded. Absence of a response is absence of
+  evidence.
+  → [ADR 0001](decisions/0001-doctor-flags-unprotected-hostname.md) (Accepted).
 
 ## Authorization / access control
 

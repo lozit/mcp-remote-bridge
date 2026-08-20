@@ -2,7 +2,7 @@
 # 0001 — `doctor` must flag an exposed hostname with no access policy
 
 **Date**: 2026-08-20
-**Status**: Proposed
+**Status**: Accepted
 
 ## Context
 
@@ -35,18 +35,45 @@ unprotected health-data endpoint is exactly that.
 of it**, and surface it. This becomes a **Milestone 2 (MVP) requirement**, not a
 post-MVP nice-to-have — shipping a v0.1 that can silently expose CGM data is not acceptable.
 
-**Open sub-decision — warn or refuse?** This ADR commits to *at minimum a warning*. Whether
-the tool goes further is unresolved:
+**Sub-decision, resolved 2026-08-20: refuse when certain, warn when ambiguous.**
 
-- **Warn only** — `doctor` reports it loudly; `apply` proceeds. Respects the user's machine
-  and the "plumbing, not a gateway" non-goal. Risk: warnings get skimmed, and this one is
-  most likely to appear on the very first run when everything else is red anyway.
-- **Refuse by default, `--allow-public` to override** — `apply` fails on an unprotected
-  hostname unless the user says otherwise. Turns the safe path into the default path,
-  matching how rule 3 treats secrets. Risk: breaks a legitimate use case (a deliberately
-  public MCP), and edges toward the tool having an opinion about access control.
+- **Certain** — an unauthenticated MCP `initialize` **succeeds**. That is not a heuristic: the
+  endpoint demonstrably serves anyone. `apply` **fails**, with `--allow-public` as the explicit
+  override for a deliberately public MCP. The safe path becomes the default path, exactly as
+  rule 3 does for secrets.
+- **Ambiguous** — anything else. `doctor` and `status` warn; nothing is blocked.
 
-Resolve this sub-decision before Milestone 2 ships; amend this ADR with the outcome.
+The asymmetry is the point. Refusing on certainty costs a legitimately-public user one flag,
+once. Refusing on ambiguity would block on a broken tunnel or an unpropagated DNS record —
+turning a security control into an availability problem, which is how security controls get
+switched off.
+
+### How detection works
+
+The check is **not a separate probe**. With an access policy in front of a hostname, an
+unauthenticated request is redirected to the identity provider (302 to
+`<team>.cloudflareaccess.com`) or refused (403). With no policy, it reaches the proxy and the
+MCP answers. So the signal is the `mcp_initialize` request, sent twice:
+
+| With credentials | Without credentials | Verdict |
+|---|---|---|
+| ✓ | ✗ *with an auth signature* | plumbing healthy, door guarded |
+| ✓ | ✓ | plumbing healthy, **door open** → refuse |
+| ✓ | ✗ *no auth signature* | ambiguous → warn |
+
+**Never conclude "protected" from a generic failure.** A dead tunnel, an unpropagated DNS
+record or a crashed proxy make the unauthenticated request fail exactly as a policy would, and
+would then read as "secure". Only a **positive authentication signature** — a redirect to an
+IdP, a 403 carrying Cloudflare's headers — may be read as "guarded". Absence of a response is
+absence of evidence.
+
+### Consequence the original draft missed
+
+`mcp_initialize` must be able to **authenticate** (a Cloudflare Access service token). Without
+that, a user who has done the right thing — a policy in front of their MCP — gets a permanently
+red `status`, because the deep probe eats the 302. Access support is therefore not a
+nice-to-have for Milestone 2; it is what makes the probe work at all for a correctly configured
+user. Its absence would have punished exactly the users this ADR is written to protect.
 
 ## Alternatives considered
 
@@ -74,13 +101,13 @@ Resolve this sub-decision before Milestone 2 ships; amend this ADR with the outc
   the plumbing work".
 
 ### Negative / Tradeoffs
-- **Detection is not clean.** "Is there a policy in front of this?" has no reliable
-  general answer over HTTP. Probable approach: an unauthenticated request from outside the
-  tunnel — if the MCP `initialize` handshake succeeds with no credentials, nothing is
-  guarding it. That is a genuine signal but it is exposer-specific and heuristic, and a
-  false *negative* here is dangerous. It must be documented as best-effort, never phrased
-  as a guarantee.
-- Adds scope to the MVP.
+- **Only the "door open" verdict is certain.** A successful unauthenticated `initialize`
+  proves openness; nothing proves protection. "Guarded" is inferred from an auth signature and
+  stays exposer-specific and best-effort — document it as such, never as a guarantee.
+- **Adds scope to the MVP**, including Cloudflare Access service-token support in the probe.
+- **`--allow-public` is a permanent escape hatch.** Once a user passes it, nothing warns again
+  for that entry. Prefer recording it in the config over a bare CLI flag, so the choice is
+  visible in the file rather than in one person's shell history.
 - Couples `doctor` slightly to Cloudflare specifics, in a codebase built to avoid exactly
   that. Keep the coupling inside the `Exposer` implementation.
 
@@ -91,6 +118,9 @@ Resolve this sub-decision before Milestone 2 ships; amend this ADR with the outc
 
 - Raised in `docs/SECURITY.md` → "Authentication" as an open question, then promoted here.
 - Milestone 2 in `docs/ROADMAP.md` carries the requirement.
+- Resolved 2026-08-20. The sub-decision turned on a finding made while settling it: the check
+  reuses the `mcp_initialize` request rather than adding a probe, which removes the
+  "heuristic" objection that had argued for warn-only.
 - Related: load-bearing rule 2 (`docs/SPEC-primitive.md`) — a check that cannot fail
   manufactures confidence; a green table over an open endpoint is the same defect wearing a
   different hat.
