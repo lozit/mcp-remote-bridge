@@ -28,7 +28,7 @@ launchd
 ### Contract
 
 ```
-mcp-remote-bridge __launch <name> --config <path>
+mcp-remote-bridge __launch <name> --config <path> --port <n>
 ```
 
 Hidden from `--help` (it is not for humans), but it is still a public entry point of a public
@@ -50,7 +50,7 @@ The launcher does **not** pass `os.Environ()` through. It builds exactly:
 
 | Source | Contents |
 |---|---|
-| Fixed | `PATH`, `HOME` |
+| Fixed | `PATH`, `HOME` — the only variables carried over from the ambient environment |
 | Declared by the entry | any `env` the entry lists (plain, non-secret values) |
 | Resolved | one variable per `secrets` entry: the declared name → the fetched value |
 

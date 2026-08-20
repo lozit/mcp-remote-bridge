@@ -33,8 +33,11 @@ type Source struct {
 	Keychain string
 }
 
-// New returns a keychain-backed SecretSource using the default search list.
-func New() *Source { return &Source{} }
+// New returns a keychain-backed SecretSource.
+//
+// keychain names a specific keychain file; empty means the user's default
+// search list.
+func New(keychain string) *Source { return &Source{Keychain: keychain} }
 
 // Get resolves key to a secret value.
 //

@@ -40,13 +40,15 @@ seams plus `Entry` / `HealthReport` are declared with stubs returning
 - [ ] `[supervised]` — *remaining on the probe: attach Cloudflare Access credentials (the
       `decorate` hook exists and is unused), and exercise it through a real hostname rather than
       loopback.* The `mcp_responds` probe itself is **done**.
+- [x] `__launch` + `internal/launcher` — **done**, with mutation-verified argv invariants.
 - [x] `KeychainSecretSource` — **done** (ADR 0004: `-g`, not `-w`).
 - [x] Config parser — **done** (ADR 0005). Strict TOML, every problem reported at once, secret
       references validated, subdomain/port collisions rejected.
-- [ ] `[supervised]` — **unblocked**: the config parser exists (ADR 0005). The `__launch`
-      subcommand — resolve secrets, build a minimal explicit environment, `syscall.Exec` mcp-proxy
-      with `--pass-environment`, never `-e`. Needs an integration test that asserts the secret
-      reaches the MCP's environment and appears in neither `argv` nor the plist.
+- [x] `__launch` — **done**. Resolves secrets, builds a minimal explicit environment,
+      `syscall.Exec`s mcp-proxy with `--pass-environment`. Proven end to end: the secret reaches
+      the MCP's environment **and** appears in no process `argv` (checked with `ps`).
+- [ ] `[supervised]` — the plist half of the secret path: assert no secret value appears in a
+      generated plist. Arrives with plist generation.
 - [ ] `[supervised]` — *`bootstrap`/`bootout`/`Status` drive real launchd state.*
       `LaunchdManager` — `bootstrap` / `bootout`, `Status`
 - [ ] **Plist generation is now loop-safe** — the dependency that blocked it is resolved:

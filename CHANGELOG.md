@@ -9,6 +9,11 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- `__launch` — the hidden subcommand launchd execs. Resolves secrets, builds a minimal explicit
+  environment (`PATH`, `HOME`, declared `env`, resolved secrets — nothing inherited), and
+  `syscall.Exec`s mcp-proxy with `--pass-environment`.
+- `[infra] keychain` — optionally resolve secrets from a dedicated keychain rather than the
+  default search list.
 - Config file support — strict TOML at `$XDG_CONFIG_HOME/mcp-remote-bridge/config.toml`, with
   unknown keys rejected, all problems reported at once, secret references validated (a pasted
   value is refused, and the error does not echo it), and subdomain/port collisions caught.

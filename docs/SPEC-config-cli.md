@@ -24,6 +24,8 @@ report; every real action is a primitive call.
 [infra]
 tunnel = "mac-mcp-bridge"        # a cloudflared tunnel, already created + authenticated
 domain = "example.com"
+# keychain = "~/Library/Keychains/mcp.keychain-db"   # optional: a dedicated keychain,
+#   lockable independently of the login keychain, so an unlocked session exposes less
 
 # one table per MCP to expose
 [mcp.standardnotes]

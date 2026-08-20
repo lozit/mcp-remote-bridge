@@ -33,6 +33,14 @@ type File struct {
 type Infra struct {
 	Tunnel string `toml:"tunnel"`
 	Domain string `toml:"domain"`
+
+	// Keychain optionally names a specific keychain file to resolve secrets
+	// from. Empty means the user's default search list.
+	//
+	// A dedicated keychain for MCP credentials is a reasonable setup: it can be
+	// locked independently of the login keychain, so the blast radius of an
+	// unlocked session is smaller.
+	Keychain string `toml:"keychain"`
 }
 
 // MCP is one [mcp.<name>] table.
