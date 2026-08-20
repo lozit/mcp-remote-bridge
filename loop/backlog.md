@@ -23,7 +23,7 @@ A task the loop can't verify its way out of, or that hides a decision, will be p
 
 ## Tasks
 
-- [ ] **Implement `ValidateName` and `ValidateSubdomain` in `internal/bridge/validate.go`.**
+- [x] **Implement `ValidateName` and `ValidateSubdomain` in `internal/bridge/validate.go`.**
       Acceptance test: `go test ./internal/bridge/ -run TestValidate` → exit 0 = green.
       Behaviour: return `nil` for a valid string, a non-nil `error` describing the violation
       otherwise. Valid means all of: length 1..63; characters `a-z`, `0-9` and `-` only
