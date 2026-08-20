@@ -17,6 +17,37 @@ from an instruction, or you catch a hallucination. Capture it at the next checkp
 
 ---
 
+## 2026-08-20 — A headless loop agent added an AI attribution trailer
+
+**Observed**: the second commit of the first `loop/run-loop.sh` run carried
+`Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`. The ten commits before it had none,
+and the loop's *own* first commit had none either — so the drift was inconsistent even with
+itself. Amended out before any push (`c54f89d`, tree unchanged).
+
+**Trigger**: an autonomous loop iteration (`claude -p`, fresh agent, no carried context). It
+followed its harness's default attribution guidance because the repo gave it nothing to
+follow: the no-attribution convention was applied by `/groundrules:bootstrap` and by the
+interactive session out of consistency, but was written **nowhere** — not in `CLAUDE.md`, and
+`.groundrules.json` carried `policies.noAiAttribution: false`.
+
+**Root cause — the generalisable one**: *an unwritten convention is not a convention.* It
+survives only as long as the agent carrying it has the context, which is exactly what a
+fresh, headless, or subagent run lacks. Any convention that matters must be written where a
+context-free agent will read it. Expect this class of drift on **every** loop run, for every
+habit this session holds implicitly.
+
+**Guard added**: the rule is stated in the global `~/.claude/CLAUDE.md` (Identity / contact),
+explicitly overriding harness defaults and explicitly naming headless runs, subagents and
+loops. `.groundrules.json` now carries `policies.noAiAttribution: true` so the policy is
+readable from inside the repo.
+
+**Known hole**: the global file does not travel with `git clone`. A contributor's agent will
+not inherit the rule. If the convention must hold for contributors, it needs a line in the
+project's `CLAUDE.md` → `### Commits` too — deliberately not added yet.
+
+**Status**: watching — re-check the trailers after the next loop run
+(`git log --format='%(trailers:key=Co-Authored-By)'`).
+
 <!-- Example:
 
 ## YYYY-MM-DD — Invents config keys that don't exist

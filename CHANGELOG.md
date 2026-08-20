@@ -9,6 +9,11 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- `ValidateName` / `ValidateSubdomain` — strict charset validation for an entry name and
+  subdomain (length 1..63, `a-z0-9-`, no leading/trailing hyphen). Invalid input is rejected,
+  never sanitized: the name becomes a service label, a hostname component and a log path.
+- `ProbeProxyListening` — the shallow health check, dialling `127.0.0.1:<port>` only.
+- Maker/verifier loop scaffolding (`loop/`) and the project invariants in `CLAUDE.md`.
 - Go module skeleton: `Entry`, `HealthReport` and the three seams (`ServiceManager`,
   `Exposer`, `SecretSource`) in `internal/bridge`, with stub implementations in
   `internal/{launchd,cloudflared,keychain}`. No behaviour yet.

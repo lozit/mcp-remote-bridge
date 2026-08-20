@@ -29,8 +29,8 @@ seams plus `Entry` / `HealthReport` are declared with stubs returning
 
 **Milestone 1 — the primitive** (see `docs/ROADMAP.md`)
 
-- [ ] `[supervised]` — *`proxy_listening` was split out to the loop backlog; these three
-      remain.* `hostname_resolves` and `hostname_responds` need real DNS/network (or an
+- [ ] `[supervised]` — *`proxy_listening` is **done** (delivered by the loop, 2026-08-20);
+      these three remain.* `hostname_resolves` and `hostname_responds` need real DNS/network (or an
       injected resolver, which is an unmade design decision); `service_loaded` delegates to
       `ServiceManager.Status`, so a loop would have to author its own fake — writer = maker.
       Remaining probes for `HealthReport`: `hostname_resolves`, `hostname_responds`,
@@ -88,6 +88,11 @@ Each gets triaged later → a **decision** (ADR), a **build** (PRD), a **milesto
 
 ## Recently done
 
+- [x] Loop run #1: both backlog tasks delivered and verified — `ValidateName` /
+      `ValidateSubdomain` and `ProbeProxyListening`. Natural stop at iteration 2/4
+      (`DONE: backlog empty`), no `blocked.md`, acceptance tests untouched, 32 tests green.
+      Captured: a `docs/LEARNINGS.md` entry (an acceptance test constrains less than it looks)
+      and a `docs/AGENT-EVALS.md` entry (attribution drift in a headless run) (2026-08-20)
 - [x] Realize: partitioned Milestone 1 into 2 `[loop]` tasks (`loop/backlog.md`) and 11
       `[supervised]`, with red acceptance tests frozen in `internal/bridge/validate_test.go`
       and `internal/bridge/probe_test.go` (2026-08-20)
