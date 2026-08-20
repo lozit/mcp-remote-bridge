@@ -26,6 +26,15 @@ Next up is Milestone 1 — the primitive.
 - [ ] Stub implementations returning `errors.New("not implemented")`, so the primitive can
       be written and unit-tested against fakes before any shelling out
 
+**Decision to settle** — blocks nothing today, must land before Milestone 2 ships
+
+- [ ] **Resolve [ADR 0001](docs/decisions/0001-doctor-flags-unprotected-hostname.md)**:
+      `doctor` flagging an exposed hostname with no access policy in front of it is a
+      Milestone 2 requirement (at minimum a warning). The open sub-decision is **warn only**
+      vs **refuse by default with `--allow-public`**. Also open: how detection actually works
+      — probably an unauthenticated `initialize` from outside the tunnel, which is heuristic
+      and where a false *negative* is the dangerous direction.
+
 **Milestone 1 — the primitive** (see `docs/ROADMAP.md`)
 
 - [ ] `HealthReport` + the probes: `proxy_listening`, `hostname_resolves`,
@@ -52,9 +61,6 @@ Raw ideas, captured before they're lost (e.g. via `/groundrules:idea`). Not yet 
 Each gets triaged later → a **decision** (ADR), a **build** (PRD), a **milestone**
 (ROADMAP), or dropped.
 
-- [ ] Should `doctor` warn when an exposed hostname answers with **no access policy in
-      front of it**? Exposing an unauthenticated MCP is the loudest foot-gun this tool can
-      hand someone (raised in `docs/SECURITY.md`) → ADR
 - [ ] Release toolchain: GoReleaser vs. a hand-rolled build matrix → ADR before Milestone 3
 - [ ] macOS Gatekeeper: notarize, or document the `xattr` workaround? → ADR
 - [ ] Homebrew tap — is there one for v0.1, and where does it live?

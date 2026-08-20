@@ -6,6 +6,11 @@
 > Distinct from `PLAN.md` (the **active** todo right now): the roadmap describes the
 > trajectory, not the current task. Structural decisions go in `docs/decisions/`.
 
+> **This file is the consolidated source for everything post-MVP.** The specs
+> ([`SPEC-primitive.md`](SPEC-primitive.md), [`SPEC-config-cli.md`](SPEC-config-cli.md))
+> point here for deferred scope rather than keeping their own lists — one place to drift,
+> instead of three.
+
 ## Condensed vision
 
 Turn a 489-line manual procedure into one verified command — and keep it plumbing, never a
@@ -34,6 +39,15 @@ gateway.
 - **Exit criteria**: a user of `mcp-standardnotes` replaces the 489-line guide with one
   config entry plus `apply`. `doctor` gives an actionable message for each missing
   precondition. `set-secret` accepts a value only from a masked prompt.
+- **Hard requirement — `doctor` must flag an unprotected hostname.** An exposed hostname
+  that answers with **no access policy in front of it** must be surfaced, at minimum as a
+  warning. `mcp-nightscout` is CGM data and `mcp-standardnotes` is private notes; a green
+  `status` over an open endpoint is manufactured confidence, which is the exact defect
+  load-bearing rule 2 exists to prevent. **Not deferrable to post-MVP** — shipping a v0.1
+  that can silently expose health data is not acceptable. Whether the tool merely *warns*
+  or *refuses* (with an `--allow-public` override) is the open sub-decision.
+  → [ADR 0001](decisions/0001-doctor-flags-unprotected-hostname.md), to resolve before this
+  milestone ships.
 - **Status**: Upcoming
 - **Spec**: [`SPEC-config-cli.md`](SPEC-config-cli.md)
 
@@ -62,8 +76,9 @@ gateway.
 
 - **Goal**: stop assuming Cloudflare.
 - **Scope**: additional `Exposer` implementations (tailscale funnel, ngrok, a plain reverse
-  proxy). Separately: Cloudflare Portals registration inside the primitive (CF API + token;
-  `entry` grows a `portal` block).
+  proxy). Separately, and in two halves: Cloudflare Portals registration **inside the
+  primitive** (CF API + token; `entry` grows a `portal` block), and **a generated CF Portals
+  entry per MCP** at the config/CLI layer — the second needs the first.
 - **Exit criteria**: an entry switches exposer by changing config, not code.
 - **Status**: Upcoming
 
@@ -74,6 +89,8 @@ Explicitly deferred, with the reason:
 - **`watch` / daemon reconcile mode** — launchd's `KeepAlive` already restarts a dead proxy;
   a manual `apply` / `status` suffices until drift proves otherwise. Wanted.
 - **Multiple config files / profiles** — no demonstrated need.
+- **Non-keychain `SecretSource` and non-launchd `ServiceManager`** — not separately
+  scheduled: they arrive with Milestone 4 (Linux).
 - **Anything gateway-shaped** — UI, filtering, skills, aggregation. Not deferred:
   **refused**. It belongs to an adopted gateway sitting on top, which would consume this
   primitive once for itself. This is the non-goal most likely to be eroded by a reasonable-

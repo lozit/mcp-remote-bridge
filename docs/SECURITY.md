@@ -31,9 +31,13 @@ one**. That is the risk it introduces, and it is deliberate. Two consequences:
 - **Of the tunnel to Cloudflare**: `cloudflared`'s own credentials, a **precondition** —
   the tunnel is created and authenticated before the tool runs, and the tool never handles
   those credentials.
-- ⚠️ **Open question to settle before v0.1** — should `doctor` warn when a hostname answers
-  without any access policy in front of it? Exposing an unauthenticated MCP is the loudest
-  foot-gun this tool can hand someone. → ADR.
+- ⚠️ **`doctor` must flag an unprotected hostname — a Milestone 2 requirement.** An exposed
+  hostname that answers with no access policy in front of it must be surfaced, at minimum as
+  a warning. Note that every `HealthReport` check goes *greener* when the endpoint is wide
+  open, so nothing else in the tool will catch this. Warn-only vs refuse-by-default (with
+  `--allow-public`) is the open sub-decision, and detection is best-effort and heuristic —
+  never phrase it as a guarantee.
+  → [ADR 0001](decisions/0001-doctor-flags-unprotected-hostname.md).
 
 ## Authorization / access control
 
