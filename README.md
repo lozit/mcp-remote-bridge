@@ -3,14 +3,20 @@
 > **What** — a small Go tool that makes a local **stdio** MCP server reachable from a remote agent, by automating the wrap-in-a-service + expose-through-a-tunnel setup people do today by hand.
 > **For** — anyone running local stdio MCP servers (starting with the users of `mcp-standardnotes`, `mcp-freestyle`, `mcp-nightscout`) who wants a VPS-hosted agent to reach them.
 > **Deployed** — not deployed — a local CLI, distributed as a single binary.
-> **Run** — no code yet; see status below.
+> **Run** — nothing usable yet; see status below.
 
 ## Status
 
-**Pre-code.** The design is specified, not built:
-[docs/SPEC-primitive.md](docs/SPEC-primitive.md) fixes the atomic operation — make
-one stdio MCP reachable — and the three seams (`ServiceManager`, `Exposer`,
-`SecretSource`) behind which the MVP ships one implementation each.
+**Skeleton, no behaviour.** The design is specified and the Go module now mirrors it,
+but every operation is still a stub returning `ErrNotImplemented`.
+
+- [docs/SPEC-primitive.md](docs/SPEC-primitive.md) fixes the atomic operation — make one
+  stdio MCP reachable — and the three seams (`ServiceManager`, `Exposer`, `SecretSource`)
+  behind which the MVP ships one implementation each.
+- [docs/SPEC-config-cli.md](docs/SPEC-config-cli.md) fixes the config file and the CLI above it.
+- `internal/bridge` declares `Entry`, `HealthReport` and the three seams;
+  `internal/{launchd,cloudflared,keychain}` hold the MVP implementations, currently stubs.
+- Next up is Milestone 1 — see [PLAN.md](PLAN.md) and [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Why
 

@@ -9,6 +9,11 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Go module skeleton: `Entry`, `HealthReport` and the three seams (`ServiceManager`,
+  `Exposer`, `SecretSource`) in `internal/bridge`, with stub implementations in
+  `internal/{launchd,cloudflared,keychain}`. No behaviour yet.
+- ADR 0001 — `doctor` must flag an exposed hostname with no access policy in front of it;
+  promoted to a Milestone 2 requirement.
 - Project bootstrapped with groundrules on 2026-08-20
 
 ### Changed

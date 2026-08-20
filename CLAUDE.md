@@ -39,9 +39,6 @@ A small Go tool that makes a local **stdio** MCP server reachable from a remote 
 
 > **Critical test**: a new dev (or Claude) should be able to run the project and its tests **first try** using the commands below. If that's not the case, fill this section before anything else.
 
-> **Pre-code.** No `go.mod` exists yet. These are the intended commands — the first task
-> that creates the module must make them true, then delete this banner.
-
 - Install deps: `go mod download`
 - Run dev: `go run ./cmd/mcp-remote-bridge <command>`
 - Test: `go test ./...`

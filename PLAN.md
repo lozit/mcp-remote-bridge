@@ -6,25 +6,17 @@
 This file differs from the long-term roadmap: it describes what is happening **now**.
 For the trajectory → [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
-**Where things stand**: pre-code. Both specs are written and committed
+**Where things stand**: the skeleton compiles. Both specs are written
 ([`docs/SPEC-primitive.md`](docs/SPEC-primitive.md),
-[`docs/SPEC-config-cli.md`](docs/SPEC-config-cli.md)). Nothing has been built yet.
-Next up is Milestone 1 — the primitive.
+[`docs/SPEC-config-cli.md`](docs/SPEC-config-cli.md)), the module exists, and the three
+seams plus `Entry` / `HealthReport` are declared with stubs returning
+`bridge.ErrNotImplemented`. **No behaviour yet** — every stub is a Milestone 1 task below.
 
 ## In progress
 
 - [ ] (nothing yet — pick the first task from "Up next")
 
 ## Up next
-
-**Getting to a compiling skeleton**
-
-- [ ] `go mod init github.com/lozit/mcp-remote-bridge` (Go 1.24); decide the package layout
-      (`internal/` for the seams? `cmd/` for the CLI?)
-- [ ] Define the three interfaces and the `entry` / `HealthReport` / `ServiceSpec` /
-      `ServiceState` types — signatures only, from `SPEC-primitive.md`
-- [ ] Stub implementations returning `errors.New("not implemented")`, so the primitive can
-      be written and unit-tested against fakes before any shelling out
 
 **Decision to settle** — blocks nothing today, must land before Milestone 2 ships
 
@@ -72,6 +64,9 @@ Each gets triaged later → a **decision** (ADR), a **build** (PRD), a **milesto
 
 ## Recently done
 
+- [x] Compiling skeleton: `go mod init`, package layout (`cmd/` + `internal/{bridge,launchd,cloudflared,keychain}`),
+      the three interfaces, `Entry` / `HealthReport` / `ServiceSpec` / `ServiceState`, and
+      stubs returning `bridge.ErrNotImplemented`. `gofmt` / `go vet` / `go test` green (2026-08-20)
 - [x] Project bootstrapped (2026-08-20)
 - [x] `docs/SPEC-config-cli.md` — the config file and the CLI layer specified (commit 02010dc)
 - [x] `docs/SPEC-primitive.md` — the `expose` primitive specified, project opened (commit 9065ca2)
