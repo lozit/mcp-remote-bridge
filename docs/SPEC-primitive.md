@@ -160,13 +160,13 @@ The primitive never touches `launchctl`, `cloudflared`, or `security` directly.
 
 ## Deferred (wanted, out of the MVP)
 
-- **Linux support**: a `SystemdManager` and a Linux `SecretSource` (libsecret, or a
-  `600` env file) behind the same interfaces. Wanted — open-source implies Linux
-  users.
-- **Portals inside the primitive**: automate the CF Portals server entry (CF API +
-  token); `entry` grows a `portal` block. Wanted.
-- **Other exposers**: tailscale funnel, ngrok, a plain reverse proxy — additional
-  `Exposer` implementations.
-- **The CLI** (`ensure`, `status`, `logs`, `restart`, `remove`, `doctor`) and the
-  **declarative config file** listing entries — the layer above this primitive, a
-  separate spec.
+**See [`ROADMAP.md`](ROADMAP.md)** — it is the single consolidated source for post-MVP
+scope. Keeping a second list here would drift from it.
+
+In short: Linux (`SystemdManager` + a Linux `SecretSource`) is Milestone 4; Portals inside
+the primitive and other exposers (tailscale funnel, ngrok, a plain reverse proxy) are
+Milestone 5.
+
+What is **no longer** deferred: the CLI and the declarative config file listing entries —
+the layer above this primitive. They are specified in
+[`SPEC-config-cli.md`](SPEC-config-cli.md) and scheduled as Milestone 2.

@@ -81,10 +81,23 @@ file was written — the primitive's "verify the effect" rule surfaced all the w
 
 ## Deferred (out of the MVP)
 
-- **`watch` / daemon reconcile mode** — a long-running process that re-probes on a
-  timer and repairs drift automatically. Out of the MVP: launchd's `KeepAlive` already
-  restarts a dead proxy, so a manual `apply` / `status` suffices until drift proves
-  otherwise. Wanted.
-- Multiple config files / profiles.
-- A generated CF Portals entry per MCP (needs the primitive's deferred Portals seam).
-- Non-keychain `SecretSource` and non-launchd `ServiceManager` — arrive with Linux.
+**See [`ROADMAP.md`](ROADMAP.md)** — it is the single consolidated source for post-MVP
+scope. Keeping a second list here would drift from it.
+
+In short: `watch` / daemon reconcile mode and multiple config files / profiles are out of
+scope for now (launchd's `KeepAlive` already restarts a dead proxy, so a manual `apply` /
+`status` suffices until drift proves otherwise); a generated CF Portals entry per MCP is
+Milestone 5, gated on the primitive's Portals seam; a non-keychain `SecretSource` and a
+non-launchd `ServiceManager` arrive with Linux in Milestone 4.
+
+## Not deferred — a `doctor` requirement for this MVP
+
+`doctor` must flag an exposed hostname that answers with **no access policy in front of
+it**, at minimum as a warning. The MCPs this tool exposes carry CGM data and private notes,
+and every check in `HealthReport` goes *greener* when the endpoint is wide open — a green
+table over an unprotected hostname is manufactured confidence, the defect load-bearing rule
+2 exists to prevent.
+
+Warn-only versus refuse-with-`--allow-public` is unresolved; see
+[ADR 0001](decisions/0001-doctor-flags-unprotected-hostname.md), to be settled before this
+layer ships.
