@@ -1,0 +1,95 @@
+{
+  "groundrulesVersion": "1.10.0",
+  "bootstrappedAt": "2026-08-20",
+  "bootstrappedWithVersion": "1.10.0",
+  "migrations": [],
+  "answers": {
+    "projectName": "mcp-remote-bridge",
+    "description": "A small Go tool that makes a local **stdio** MCP server reachable from a remote agent, by automating the wrap-in-a-service + expose-through-a-tunnel setup people do today by hand.",
+    "projectType": "code",
+    "stack": "Go 1.24",
+    "hasArchitecture": true,
+    "hasGlossary": true,
+    "hasChangelog": true,
+    "hasPlan": true,
+    "specializedDocs": [
+      "SECURITY",
+      "RELEASE",
+      "ROADMAP",
+      "PROCESS",
+      "AGENT_EVALS"
+    ],
+    "remoteProvider": "github",
+    "remoteVisibility": "public",
+    "remotePreexisting": "https://github.com/lozit/mcp-remote-bridge.git",
+    "mode": "resume"
+  },
+  "intent": {
+    "source": "file",
+    "filePath": "docs/SPEC-primitive.md + docs/SPEC-config-cli.md + README.md",
+    "goal": "Make a local stdio MCP server reachable from a remote agent with one command, replacing a 489-line manual procedure with a tool that executes it and verifies it down to a real MCP initialize handshake.",
+    "users": "Users of local stdio MCP servers (mcp-standardnotes, mcp-freestyle, mcp-nightscout first), anyone with a VPS-hosted agent needing to reach an MCP on a personal machine, and gateway operators who would consume the primitive once for the gateway.",
+    "constraints": [
+      "Go 1.24, single distributable binary, stdlib-first (Cobra + TOML)",
+      "MVP boundary: macOS (launchd) + Cloudflare Tunnel (cloudflared) + macOS keychain, one implementation per seam",
+      "Preconditions assumed never created: cloudflared installed with a named authenticated tunnel, mcp-proxy available",
+      "No secret in config, service file, or command line - referenced by name, fetched at launch, fails loudly if absent",
+      "Health must be a real probe; a health check that cannot fail is worse than none",
+      "Open source implies Linux users - the seams exist so Linux is additive, not a rewrite"
+    ],
+    "nonGoals": [
+      "Not a gateway: no UI, no filtering, no skills, no aggregation",
+      "No Cloudflare Portals registration inside the primitive",
+      "No Linux/systemd, no non-keychain SecretSource, no tailscale/ngrok/reverse-proxy exposers",
+      "No watch/daemon reconcile mode",
+      "No multiple config files or profiles",
+      "apply never removes an entry deleted from the config"
+    ],
+    "acceptanceCriteria": [
+      "ensure_exposed and remove_exposed are idempotent inverses; second apply on a healthy entry is a no-op",
+      "HealthReport carries checked facts (proxy_listening, mcp_initialize, hostname_resolves, hostname_responds, service_loaded) and names which check failed",
+      "The deep probe catches proxy-up-but-MCP-dead",
+      "No secret value in config.toml, a launchd plist, argv, or a log; set-secret reads a masked stdin prompt only",
+      "A referenced-but-absent secret fails at start, loudly",
+      "Exit codes compose: 0 all healthy, 1 precondition failed, 2 at least one entry unhealthy",
+      "doctor and status change nothing",
+      "The mcp-standardnotes reference case works end to end from one config entry plus apply"
+    ]
+  },
+  "appliedPractices": [],
+  "loop": {
+    "scaffolded": false,
+    "at": null
+  },
+  "policies": {
+    "noAiAttribution": false
+  },
+  "generatedFiles": [
+    "CLAUDE.md",
+    "PLAN.md",
+    "CHANGELOG.md",
+    "RELEASE.md",
+    "docs/VISION.md",
+    "docs/ARCHITECTURE.md",
+    "docs/GLOSSARY.md",
+    "docs/SECURITY.md",
+    "docs/ROADMAP.md",
+    "docs/PROCESS.md",
+    "docs/AGENT-EVALS.md",
+    "docs/LEARNINGS.md",
+    "docs/decisions/README.md",
+    "docs/decisions/0000-template.md",
+    "docs/media/README.md",
+    "intake/README.md",
+    "intake/INTENT.md",
+    ".groundrules.json"
+  ],
+  "skippedFiles": {
+    "README.md": "pre-existing, unsigned (foreign) - richer than the template, kept as-is",
+    ".gitignore": "pre-existing, unsigned (foreign) - already Go-appropriate, kept as-is",
+    "docs/DATA_MODEL.md": "not selected - no database",
+    "docs/DESIGN_SYSTEM.md": "not selected - no UI",
+    "docs/I18N.md": "not selected - not multilingual",
+    "loop/": "loop scaffolding declined at bootstrap"
+  }
+}

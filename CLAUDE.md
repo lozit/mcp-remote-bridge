@@ -1,0 +1,250 @@
+<!-- generated-by: groundrules v1.10.0 -->
+# CLAUDE.md — mcp-remote-bridge
+
+> This file is **mutable and iterative**. Update it after every Claude mistake or newly discovered convention. Target: < 200 lines.
+
+> **Relationship with the global CLAUDE.md**: this file is loaded **in addition to** the global (`~/.claude/CLAUDE.md` + enterprise policy) — on conflict the global/enterprise rule wins. **Omitted here (your global already covers them):** none.
+
+## Session start — read first, in order
+
+1. `PLAN.md` — where the project stands **now** (if present)
+2. `docs/LEARNINGS.md` — rules learned from past corrections (apply them!)
+3. `docs/VISION.md` — goal, scope, non-goals (if present)
+4. The artifacts of whatever is in progress per `PLAN.md`
+
+<!-- Adjust this list to your project: keep it short, ordered, and current. -->
+
+## Capture at checkpoints (don't wait to be asked)
+
+The agent can't perceive "end of session" — so capture at the **work boundaries it *can* see**, and **propose it proactively** there without waiting for the user:
+
+- **Before a `git push`, a tag, or a release** — the highest-value, most reliable moment: pause and capture *before* shipping.
+- **When a `PLAN.md` milestone is completed**, or after a substantial chunk of work.
+
+You can also trigger it yourself any time with **`/groundrules:checkpoint`**.
+
+At that moment, three questions, each routed to where it belongs:
+
+1. **Decided** anything structural? → `/groundrules:add-adr` (`docs/decisions/`)
+2. **Learned** something that changes how to work here (incl. a blocker that cost 30+ min, with its fix)? → `/groundrules:learn` (`docs/LEARNINGS.md`)
+3. **Caught the agent** repeating a mistake, hallucinating, or drifting? → note it in `docs/AGENT-EVALS.md` (if present) and add the guard here or in `.claude/rules/`
+
+Capture beats memory: if it's not written to the repo, it's gone next session.
+
+## Description
+
+A small Go tool that makes a local **stdio** MCP server reachable from a remote agent, by automating the wrap-in-a-service + expose-through-a-tunnel setup people do today by hand.
+
+## Setup / Build / Test
+
+> **Critical test**: a new dev (or Claude) should be able to run the project and its tests **first try** using the commands below. If that's not the case, fill this section before anything else.
+
+> **Pre-code.** No `go.mod` exists yet. These are the intended commands — the first task
+> that creates the module must make them true, then delete this banner.
+
+- Install deps: `go mod download`
+- Run dev: `go run ./cmd/mcp-remote-bridge <command>`
+- Test: `go test ./...`
+- Lint: `gofmt -l .` (must print nothing) then `go vet ./...`
+- Build: `go build -o mcp-remote-bridge ./cmd/mcp-remote-bridge`
+
+**Run the quality suite in CI's order**: `gofmt -l .` → `go vet ./...` → `go test ./...`.
+
+<important if="about to claim something works">A green `go test ./...` proves the mocks
+pass, not that the tool works. Every seam (`ServiceManager`, `Exposer`, `SecretSource`) is
+mocked in unit tests, and everything that actually breaks — launchd semantics, DNS
+propagation, tunnel auth — lives on the other side of that mock. Claiming a milestone works
+on unit tests alone is the exact failure this project exists to prevent (see "verify the
+effect, never trust the write"). Say what you actually ran.</important>
+
+## Key files and folders
+
+- `README.md` — public presentation
+- `CLAUDE.md` — this file
+- `PLAN.md` — active todo (if present), maintained during work
+- `docs/` — project documentation
+  - **`docs/SPEC-primitive.md`** — **normative**: the `expose` primitive, the three
+    load-bearing rules, `HealthReport`, the three seams
+  - **`docs/SPEC-config-cli.md`** — **normative**: the config file format and the CLI
+  - `docs/ARCHITECTURE.md` — how the specs are realized (the *map*; the specs are the
+    territory)
+  - `docs/SECURITY.md` — the operational reading of rule 3 (the secret path)
+  - `docs/ROADMAP.md` — milestones · `RELEASE.md` — the shipping runbook
+  - `docs/decisions/` — ADRs (one file per structural decision)
+  - `docs/LEARNINGS.md` — learnings throughout the project (reverse-chronological)
+  - `docs/ARCHITECTURE.md` — architecture snapshot (if present)
+  - `docs/GLOSSARY.md` — domain vocabulary (if present)
+- `intake/` — upstream notes (read this folder for domain context at session start)
+- `docs/media/` — visual assets
+- `.claude/` — Claude Code config
+  - `.claude/settings.json` — team config, checked into git
+  - `.claude/rules/*.md` — auto-loaded rules (`paths:` frontmatter for scoping)
+  - `.claude/commands/`, `.claude/skills/`, `.claude/agents/`, `.claude/hooks/` — automations
+
+### Interop with superpowers (if you use that plugin)
+
+If you also use [superpowers](https://github.com/obra/superpowers), there is **no duplication** — the artifacts live at different altitudes.
+
+- **Durable project memory** (the *why*, stable, hand-curated): `docs/VISION.md`, `docs/decisions/`, `docs/ROADMAP.md`, `docs/ARCHITECTURE.md`.
+- **Per-feature artifacts** (the *how*, volatile, generated by superpowers' TDD workflow): `docs/superpowers/specs/*-design.md` and `docs/superpowers/plans/*.md`.
+- **The PRD altitude *above*** (problem, risks, measurable success criteria): superpowers' spec usually omits these — a short `docs/prd/<feature>.md` can sit above its spec without duplicating the design (`/groundrules:prd`).
+- `PLAN.md` stays the cross-cutting **"now"** view; when a feature is driven by superpowers, have it **point to** the active plan (`docs/superpowers/plans/<date>-<feature>.md`) instead of duplicating tasks.
+
+## Conventions
+
+### Commits
+
+Conventional Commits: `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`. Small and atomic. Don't mix refactor and feature.
+
+### Code
+
+**Go 1.24** — distributed as a single static binary (`brew`, download-and-run, no runtime).
+Stdlib-first; [Cobra](https://github.com/spf13/cobra) for command structure, TOML for the
+config file.
+
+- The primitive talks **only to interfaces** (`ServiceManager`, `Exposer`, `SecretSource`).
+  Shelling out to `launchctl`, `cloudflared`, or `security` happens **inside an
+  implementation**, never in the primitive or the CLI.
+- The CLI owns no logic beyond load → loop → report; every real action is a primitive call.
+- `gofmt` + `go vet` clean. Wrap errors with `%w`; never swallow one.
+- Readability > cleverness. No premature abstractions. No comments paraphrasing code —
+  reserve them for non-obvious "why".
+
+Readability > cleverness. No premature abstractions. No comments paraphrasing code — reserve them for non-obvious "why".
+
+### Permissions and settings
+
+- Pre-allow safe permissions via `/permissions` (e.g., `"Bash(npm run *)"`, `"Bash(git status)"`)
+- Team config in `.claude/settings.json`, checked into git
+- For subfolder-specific rules: `.claude/rules/<topic>.md` with `paths:` frontmatter rather than bloating this file
+
+### The three load-bearing rules (from `docs/SPEC-primitive.md`)
+
+These are not style preferences — they are the project. Code that violates one is wrong
+even when it works.
+
+1. **Reconcile, not create.** State is *ensured*, not imperatively built: detect what is
+   missing or dead, repair that, leave the rest. This is what makes re-running safe and
+   `remove` the exact inverse of `ensure`.
+2. **Verify the effect, never trust the write.** `HealthReport` is a record of probes
+   actually run, never of files written. The `mcp_initialize` deep probe exists because a
+   proxy can be listening while the MCP inside it is dead. *A health check that cannot fail
+   is worse than none — it manufactures confidence.*
+3. **Secrets never touch config, service files, or a command line.** References by name;
+   fetched from the `SecretSource` at launch, immediately before `exec`; absent secret →
+   fail loudly at start, never a proxy that 401s silently. See `docs/SECURITY.md`.
+
+**And the non-goal that will be eroded if you let it**: this is plumbing, **not a gateway**.
+No UI, no filtering, no skills, no aggregation — however reasonable the request sounds.
+
+## Posture
+
+How I want you to work with me — not just *what* to do.
+
+**Push back.** Don't be sycophantic — your job is to help me be *right*, not to agree with me.
+- Challenge a plan that looks off-strategy, technically wrong, or inconsistent with a past decision (`docs/decisions/`, `docs/LEARNINGS.md`).
+- Surface tradeoffs I may have missed ("this works, but costs you in perf/maintainability").
+- If a request is ambiguous, **ask before acting** — don't guess.
+- To stress-test a plan, ask for a **premortem** ("assume it failed — why?"), not a thumbs-up: reframing the request as a critique elicits far less sycophancy than asking "is this good?" (`/groundrules:premortem`).
+
+**Stay reversible.** Interrupting with a question is always cheaper than destroying something silently.
+- **Confirm before any hard-to-undo action**: deletion, migration, mass rewrite, destructive command. When in doubt, stop and ask.
+- Safety nets to lean on: work in git and commit often (the ultimate net); `/rewind` (or `Esc Esc`) restores pre-edit checkpoints. Optionally add a `.claude/settings.json` `deny` list and a `PreToolUse` guard for destructive commands (harness-specific — not generated for you).
+
+**Keep the diff small.** *Would a senior engineer call this overcomplicated?* — if yes, it probably is.
+- **Simplicity first** — write the minimum that solves the *stated* problem; no speculative features, no abstraction you don't need yet.
+- **Surgical changes** — touch only what the task requires; match the surrounding style; don't refactor unrelated code in passing.
+- **Clean up only your own mess** — remove an import or helper only when *your* change is what orphaned it.
+
+## Verifying the work
+
+Before declaring a task done:
+
+- Run the test command above
+- For UI: actually use the feature in a browser, not just compile
+- For data: check the actual data, not just the absence of error
+- Produce a **behavior diff** (before/after) — not just "I ran the tests"
+
+> *"Prove to me this works"* — if you can't prove it, it's not done.
+
+## When to document
+
+### ADR — `docs/decisions/`
+
+When a **structural decision** is made (tech, pattern, tradeoff), propose an ADR. Copy `0000-template.md` → `NNNN-title-kebab.md`. Keep it < 1 page.
+
+### LEARNINGS — `docs/LEARNINGS.md`
+
+When a **non-trivial learning** emerges (pitfall avoided, subtle bug, discovered convention), add a dated entry at the top.
+
+### PLAN.md
+
+Keep current: check off done, add emerging tasks, note blockers.
+
+### The repo is the only memory
+
+All project knowledge lives **in this repo** (`docs/LEARNINGS.md`, `docs/decisions/`, `PLAN.md`, this file) — never in machine-local agent state (`~/.claude/` memories or plans). Something learned in a session gets written into the repo docs, not into agent memory; agent memory is for cross-project/personal facts only. **Never reference `~/.claude/*` paths from repo docs** — they don't survive a clone or a machine change. A plan-mode file worth keeping gets copied into the repo before the session ends.
+
+### Keep generated docs current (living docs)
+
+Every file created at bootstrap/adopt is **living** — keep it in sync **in the same change** that makes it stale; don't let it drift. Updating an affected doc is **part of the task**, not a follow-up. Whenever your work touches one of these areas, update the matching file (if present):
+
+- `README.md` — when a change makes it inaccurate
+- `docs/VISION.md` — goal / users / scope / constraints change
+- `docs/ARCHITECTURE.md` — structure / components / stack change
+- `docs/DATA_MODEL.md` — schema / entities / access rules change
+- `docs/SECURITY.md` — auth / secrets / personal-data handling change
+- `docs/I18N.md` · `docs/DESIGN_SYSTEM.md` · `docs/ROADMAP.md` · `docs/GLOSSARY.md` · `docs/PROCESS.md` — their domain changes
+- `RELEASE.md` — the release procedure or an observed fragility changes
+- `docs/AGENT-EVALS.md` (if present) — when the agent repeats a mistake, hallucinates, or drifts
+- `CHANGELOG.md` — add an entry under `[Unreleased]` for any notable change
+- `PLAN.md` · `docs/LEARNINGS.md` · `docs/decisions/` — as described above
+
+## Updating this file
+
+This file is alive — but keep it a **map, not the territory**. It is loaded into context at *every* session start, so link to docs and let them be read on demand; don't paste doc content here "to be safe". Oversized always-on context dilutes attention (models degrade as input grows) and busts the prompt cache on every edit. A documentation-search / RAG tool is only worth it for large *external* corpora you can't fit — your own repo is read natively (`Read`/`grep`), no plugin needed.
+
+- When Claude makes a mistake: add a rule so it doesn't recur
+- When you spot an unwritten convention: codify it here
+- For a rule that **must absolutely survive** file growth: `<important if="situation">rule</important>`
+- If the file exceeds 200 lines or a section swells: extract to `docs/` or `.claude/rules/`
+- For rules applicable to a certain type of file: prefer `.claude/rules/` with `paths:` rather than putting everything here
+
+> *"Anytime we see Claude do something incorrectly we add it to the CLAUDE.md"* — iterate until the error rate is acceptable.
+
+## Claude Code workflow
+
+- **Match the work to the regime** before diving in (reflection before realization — know your phase):
+  - a **decision / fork** (an unsettled choice) → capture it as an **ADR** (`/groundrules:add-adr`) *before* acting
+  - a **non-trivial feature** → a **PRD** (`/groundrules:prd`, or your superpowers spec) first, then build against it
+  - an **interactive, non-trivial** change → **plan mode** (`shift+tab`) before you start
+  - an **atomic, testable, isolatable** task → if this repo has `loop/` scaffolding, hand it to **`/groundrules:realize`** → the loop (it gates `[loop]` on a pre-written, red acceptance test); otherwise just build it
+- **`/compact [hint]`** mid-task to compress context; **`/clear`** when switching tasks
+- **Git worktrees** for parallel sessions: `claude --worktree <name>`
+- **Custom skills/commands** in `.claude/` — if you do something more than once a day, automate it
+- **Delegation > pair-programming**: with Opus 4.6+, give **goal**, **constraints**, and **acceptance criteria** in the first message, rather than guiding line by line
+
+## Git workflow
+
+- **Branching — trunk-based.** Commit straight to `main`; lean on tags and `/rewind`. Solo
+  repo, no review gate. Revisit if contributors arrive.
+- Only commit on **explicit request** (never auto-commit at end of task)
+- Verify no secrets or debug files are included before committing
+
+## Don't
+
+- Don't add dependencies without confirming
+- Don't commit without explicit request
+- Don't create new doc files without need (prefer enriching existing)
+- Don't do opportunistic refactoring mid-feature
+- Don't ignore a rule in this file — if it doesn't fit, **modify it**, don't bypass it
+- Don't park project knowledge in agent memory or reference `~/.claude/*` from the docs — the repo is the only memory
+
+## Tech stack
+
+**Go 1.24**, single static binary, Cobra + TOML. Conventions above under
+**Conventions → Code**; the realized structure in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
+## Notes
+
+Project bootstrapped with [groundrules](https://github.com/lozit/groundrules) on 2026-08-20.
