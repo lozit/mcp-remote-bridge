@@ -9,6 +9,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- `ProbeMCPResponds` — the deep liveness probe, with an integration harness that runs a real
+  mcp-proxy and requires the probe to go red when the MCP is killed.
 - ADR 0003 — the liveness probe must carry data back from the MCP. Measured against mcp-proxy
   0.12.0: both `initialize` and `ping` are answered by the proxy, so neither detects a dead MCP;
   a dead MCP also returns HTTP 200, so the verdict must be read from the JSON-RPC body.
@@ -28,6 +30,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 - Project bootstrapped with groundrules on 2026-08-20
 
 ### Changed
+- `ServiceSpec.KeepAlive` is now a `KeepAlivePolicy` struct — launchd expresses this as a
+  dictionary, which a bool could not carry.
 - `HealthReport` check `mcp_initialize` renamed to `mcp_responds` — the old name asserted a
   handshake that proves nothing about the MCP.
 - `docs/SPEC-primitive.md` corrected: its description of the deep probe was wrong.

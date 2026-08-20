@@ -37,13 +37,9 @@ seams plus `Entry` / `HealthReport` are declared with stubs returning
       `ServiceManager.Status`, so a loop would have to author its own fake — writer = maker.
       Remaining probes for `HealthReport`: `hostname_resolves`, `hostname_responds`,
       `service_loaded`
-- [ ] `[supervised]` — *the transport and endpoint are now measured (`POST /mcp`), but the
-      probe is a stateful three-request sequence and the list method has to be chosen from the
-      MCP's declared capabilities — see [ADR 0003](docs/decisions/0003-liveness-probe-must-carry-data.md).*
-      **The `mcp_responds` deep probe** — `initialize` → `notifications/initialized` →
-      `tools/list` (or the list method the capabilities allow), reusing `mcp-session-id`, with
-      the verdict read from the JSON-RPC **body**, never the HTTP status. Write this one
-      *before* the happy path; it is what makes every later "it works" claim mean something
+- [ ] `[supervised]` — *remaining on the probe: attach Cloudflare Access credentials (the
+      `decorate` hook exists and is unused), and exercise it through a real hostname rather than
+      loopback.* The `mcp_responds` probe itself is **done**.
 - [ ] `[supervised]` — *the keychain lookup has a real machine side effect. The launcher's
       shape is no longer open — see [ADR 0002](docs/decisions/0002-launcher-is-a-hidden-subcommand.md)
       and [`docs/SPEC-launcher.md`](docs/SPEC-launcher.md).* `KeychainSecretSource` + the
@@ -97,6 +93,11 @@ Each gets triaged later → a **decision** (ADR), a **build** (PRD), a **milesto
 
 ## Recently done
 
+- [x] `mcp_responds` probe implemented, with an integration harness that runs a **real**
+      mcp-proxy over a real stdio MCP (the test binary re-execs itself as the fixture), kills
+      the MCP by PID and requires the probe to go red. Verified by mutation: reverting the probe
+      to the spec's original initialize-only form makes that test fail. `ServiceSpec.KeepAlive`
+      became a `KeepAlivePolicy` struct to match the real plists (2026-08-21)
 - [x] Launcher specified: [ADR 0002](docs/decisions/0002-launcher-is-a-hidden-subcommand.md)
       (hidden `__launch` subcommand, not a generated shell script) and
       [`docs/SPEC-launcher.md`](docs/SPEC-launcher.md). Found while specifying it that

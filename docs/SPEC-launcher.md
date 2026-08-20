@@ -104,9 +104,25 @@ Beware what that `initialize` does **not** prove — see
 | `Label` | derived from the entry name (see the naming rules) |
 | `ProgramArguments` | the absolute path of the `mcp-remote-bridge` binary, then `__launch`, `<name>`, `--config`, `<path>` |
 | `RunAtLoad` | true |
-| `KeepAlive` | true — a dead proxy must come back |
-| `ThrottleInterval` | generous (≥ 60s), so an unrecoverable failure fails slowly rather than spinning |
-| `StandardOutPath` / `StandardErrorPath` | the entry's known log paths |
+| `KeepAlive` | a **dictionary**, not a boolean: `{SuccessfulExit: false, Crashed: true}` — restart when the program exits non-zero or crashes |
+| `ThrottleInterval` | ≥ 60s, so an unrecoverable failure fails slowly rather than spinning |
+| `StandardOutPath` / `StandardErrorPath` | the entry's **own** log paths — one file per entry |
+
+> **Measured against a working hand-built setup** (`~/Library/LaunchAgents/com.mcpstandardnotes.proxy.plist`,
+> 2026-08-21) rather than derived from documentation. That plist is the reference this generator
+> must match. Two deliberate differences from it:
+>
+> - It uses `ThrottleInterval: 10`. We use ≥ 60: with `SuccessfulExit: false`, a launcher that
+>   exits non-zero on a missing secret is restarted forever, and 10s makes that a spin. Slower is
+>   more diagnosable.
+> - It points `StandardOutPath` and `StandardErrorPath` of **several entries at one shared file**,
+>   so their output interleaves. One log per entry is a concrete gain of the tool, not just
+>   automation of the status quo.
+
+**What that reference plist also demonstrates**: it is `-rw-r--r--` (world-readable) and carries
+`-e SN_EMAIL <value>` in `ProgramArguments`. The secret is exposed twice over — in a readable
+file and in `argv`. This is the failure rule 3 exists to close, observed in production on the
+author's own machine.
 
 **The plist is world-readable, and it contains no secret** — only a name and a config path.
 That is the whole reason the launcher exists.

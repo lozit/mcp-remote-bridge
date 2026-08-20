@@ -69,7 +69,12 @@ type ServiceSpec struct {
 	StderrPath string
 
 	// KeepAlive asks the service manager to restart the program when it dies.
-	KeepAlive bool
+	//
+	// launchd expresses this as a dictionary rather than a boolean
+	// ({SuccessfulExit: false, Crashed: true}), so this is a struct: a bool
+	// could not carry the distinction, and the working hand-built plists this
+	// generator must match use the dictionary form.
+	KeepAlive KeepAlivePolicy
 
 	// ThrottleInterval bounds how fast a repeatedly-failing program is retried.
 	//
@@ -77,6 +82,19 @@ type ServiceSpec struct {
 	// the launcher exit before starting the proxy, and KeepAlive would otherwise
 	// spin on it. A slow, visible loop is diagnosable; a spin is noise.
 	ThrottleInterval time.Duration
+}
+
+// KeepAlivePolicy says when a dead program should be restarted.
+//
+// The zero value restarts nothing, so a spec that forgets to set it does not
+// silently get supervision it never asked for.
+type KeepAlivePolicy struct {
+	// OnFailure restarts the program when it exits non-zero
+	// (launchd: KeepAlive/SuccessfulExit = false).
+	OnFailure bool
+	// OnCrash restarts the program when it is killed by a signal
+	// (launchd: KeepAlive/Crashed = true).
+	OnCrash bool
 }
 
 // ServiceState is what a ServiceManager knows about a label right now.
