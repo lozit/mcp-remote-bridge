@@ -69,7 +69,11 @@ type MCP struct {
 	Subdomain string            `toml:"subdomain"`
 	Port      int               `toml:"port"`
 	Env       map[string]string `toml:"env"`
-	Secrets   map[string]string `toml:"secrets"`
+
+	// AllowPublic acknowledges an entry deliberately served without
+	// authentication. Without it, apply refuses an entry proven to be open.
+	AllowPublic bool              `toml:"allow_public"`
+	Secrets     map[string]string `toml:"secrets"`
 }
 
 // knownSecretPrefixes are the SecretSource schemes a reference may name.
@@ -242,18 +246,19 @@ func (f *File) Entries() []bridge.Entry {
 	for _, name := range sortedKeys(f.MCP) {
 		e := f.MCP[name]
 		out = append(out, bridge.Entry{
-			Name:      name,
-			Command:   e.Command,
-			Args:      e.Args,
-			Env:       e.Env,
-			Secrets:   e.Secrets,
-			Port:      e.Port,
-			Subdomain: e.Subdomain,
-			Domain:    f.Infra.Domain,
-			AccountID: f.Infra.AccountID,
-			ZoneID:    f.Infra.ZoneID,
-			TunnelID:  f.Infra.TunnelID,
-			APIToken:  f.Infra.APIToken,
+			Name:        name,
+			Command:     e.Command,
+			Args:        e.Args,
+			Env:         e.Env,
+			Secrets:     e.Secrets,
+			Port:        e.Port,
+			Subdomain:   e.Subdomain,
+			AllowPublic: e.AllowPublic,
+			Domain:      f.Infra.Domain,
+			AccountID:   f.Infra.AccountID,
+			ZoneID:      f.Infra.ZoneID,
+			TunnelID:    f.Infra.TunnelID,
+			APIToken:    f.Infra.APIToken,
 
 			AccessClientID:     f.Infra.AccessClientID,
 			AccessClientSecret: f.Infra.AccessClientSecret,

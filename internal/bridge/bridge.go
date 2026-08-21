@@ -21,6 +21,10 @@ type Bridge struct {
 	// against.
 	BinaryPath string
 
+	// Warn receives messages the caller should see but that do not stop a run —
+	// notably an access policy that could not be confirmed. Nil discards them.
+	Warn func(string)
+
 	// ConfigPath is the absolute path the launcher reloads the entry from.
 	ConfigPath string
 

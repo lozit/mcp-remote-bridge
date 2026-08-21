@@ -41,6 +41,9 @@ subdomain = "sn-mcp"             # -> sn-mcp.example.com
 # port omitted -> auto-assigned
 secrets   = { SN_EMAIL = "keychain:mcp-sn-email" }   # NAME -> SecretSource key, never a value
 
+# allow_public = true                # acknowledge an entry served without authentication;
+                                      # without it, apply refuses one proven to be open
+
 [mcp.freestyle]
 command   = "mcp-freestyle"
 subdomain = "freestyle-mcp"

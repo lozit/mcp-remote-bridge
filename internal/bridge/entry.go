@@ -69,6 +69,14 @@ type Entry struct {
 	// zone's DNS. See docs/SECURITY.md.
 	APIToken string
 
+	// AllowPublic acknowledges that this entry is deliberately reachable without
+	// authentication.
+	//
+	// Recorded in the config rather than passed as a CLI flag on purpose: a flag
+	// vanishes into one person's shell history, while this leaves the decision
+	// visible in a file that can be reviewed. See ADR 0001.
+	AllowPublic bool
+
 	// AccessClientID identifies a Cloudflare Access service token. It is an
 	// identifier, not a secret, so it sits in the config in clear like the other
 	// ids.

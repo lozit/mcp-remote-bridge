@@ -44,9 +44,9 @@ seams plus `Entry` / `HealthReport` are declared with stubs returning
 - [x] Access service tokens + the `hostname_responds` probe — **implemented**. Still to verify:
       the two header names come from documentation, not measurement (the only such case in this
       codebase). The first live run against a guarded hostname is the verification.
-- [ ] `[supervised]` — the access-policy check of ADR 0001: probe the hostname **without**
-      credentials and read the verdict from the signature. Both signatures are now measured and
-      recorded in the ADR; this is mostly wiring.
+- [x] The access-policy check of ADR 0001 — **done and verified live**: `hermes-mcp` reports
+      `guarded` (403 + `cf-access-aud`), `freestyle-mcp` reports `open` (unauthenticated
+      `initialize` succeeded). `apply` refuses the second unless `allow_public = true`.
 - [x] `LaunchdManager` implemented against measured launchctl behaviour: bootstrap is **not**
       idempotent (rc 5 = "already there", despite saying "Input/output error"), rc 3 and rc 113
       are answers rather than failures, and `Running` must come from the pid because `state` is
@@ -121,6 +121,17 @@ Each gets triaged later → a **decision** (ADR), a **build** (PRD), a **milesto
 - [ ] macOS Gatekeeper: notarize, or document the `xattr` workaround? → ADR
 - [ ] Homebrew tap — is there one for v0.1, and where does it live?
 - [ ] Security contact / GitHub private advisory, before the repo gets any users
+
+## Operational — the maintainer's own infrastructure, not this codebase
+
+- [ ] **Add a Self-hosted Access application on `freestyle-mcp.paranoid.foo`.** Measured
+      2026-08-21: an unauthenticated MCP `initialize` on that hostname returns `200`. The
+      `mcp-freestyle` application in Zero Trust is of type **MCP**, whose destination is a
+      server name inside the Portal (`mcp.paranoid.foo`) — **not** the tunnel hostname. So the
+      Portal path is guarded while the direct tunnel hostname is open, and the dashboard shows
+      "Service token access" next to it, which reads as protected.
+- [ ] Check the same for `mcp-standardnotes`: it is also of type MCP, and the tunnel ingress
+      lists only two hostnames for three declared MCP applications.
 
 ## Waiting / blocked
 

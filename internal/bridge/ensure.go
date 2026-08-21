@@ -102,7 +102,56 @@ func (b *Bridge) EnsureExposed(entry Entry) (HealthReport, error) {
 		}
 	}
 
+	if err := b.enforceAccessPolicy(entry); err != nil {
+		return report, err
+	}
+
 	return b.Probe(entry), nil
+}
+
+// enforceAccessPolicy refuses an entry proven to serve anyone.
+//
+// The asymmetry is the decision (ADR 0001): refuse only on PROOF that the
+// endpoint is open, warn on anything ambiguous. Refusing on ambiguity would
+// block on a broken tunnel or an unpropagated DNS record, turning a security
+// control into an availability problem — which is how security controls end up
+// switched off.
+//
+// It runs after the hostname exists, because there is nothing to probe before
+// that. An entry that turns out to be open is refused here, having been
+// created: the caller is told to guard it or to say allow_public, and `remove`
+// is the way back.
+func (b *Bridge) enforceAccessPolicy(entry Entry) error {
+	if b.Exposer == nil || entry.Subdomain == "" || entry.Domain == "" {
+		return nil
+	}
+	if entry.AllowPublic {
+		return nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), MCPProbeTimeout)
+	defer cancel()
+
+	verdict, why := CheckAccessPolicy(ctx, &http.Client{Timeout: MCPProbeTimeout}, entry.Hostname())
+	switch verdict {
+	case PolicyOpen:
+		return fmt.Errorf(
+			"%s is reachable without authentication: %s. Put an Access policy in front of the "+
+				"HOSTNAME (an MCP Portal application does not guard the tunnel hostname), or set "+
+				"allow_public = true on this entry if that is intended", entry.Hostname(), why)
+	case PolicyUnknown:
+		// A warning, not a failure: this is exactly where a broken tunnel and a
+		// guarded one look alike.
+		b.warnf("could not confirm that %s is guarded: %s", entry.Hostname(), why)
+	}
+	return nil
+}
+
+// warnf reports something the caller should see but that does not stop the run.
+func (b *Bridge) warnf(format string, args ...any) {
+	if b.Warn != nil {
+		b.Warn(fmt.Sprintf(format, args...))
+	}
 }
 
 // RemoveExposed tears the entry down, and returns a probed HealthReport

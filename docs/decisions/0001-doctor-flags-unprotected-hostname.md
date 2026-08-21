@@ -2,7 +2,7 @@
 # 0001 — `doctor` must flag an exposed hostname with no access policy
 
 **Date**: 2026-08-20
-**Status**: Accepted
+**Status**: Accepted · **Implemented** 2026-08-21
 
 ## Context
 
@@ -77,6 +77,34 @@ nothing in the existing setup signalling the difference. An `apply` would have r
 unprotected one all green — port open, MCP responding, hostname responding — because every
 check gets *greener* when the endpoint is open. That is the case this ADR exists for, observed
 in production rather than imagined.
+
+### Why the check cannot read the configuration instead
+
+The obvious optimisation — ask the Access API which applications exist and infer whether a
+hostname is guarded — **gives the wrong answer**, and the live case shows why.
+
+Cloudflare Access applications of type **MCP** have a *server name inside an MCP Portal* as
+their destination, not a hostname. On the measured account, `mcp-freestyle` (type MCP) is
+guarded by a service-token policy and appears in the dashboard as protected, while the tunnel
+hostname `freestyle-mcp.paranoid.foo` that reaches the same MCP has **no application at all**.
+The Portal path is guarded; the direct path is open. The names do not even match
+(`mcp-freestyle` versus `freestyle-mcp.paranoid.foo`), so no string comparison would relate
+them.
+
+**Therefore the check must send a request.** Protection is a property of the path, not of the
+list of applications, and only a probe travels the path. This is rule 2 applied to a security
+configuration: reading the config tells you what someone intended, not what the network does.
+
+A reader who is about to reimplement this against the Access API should stop here: it was
+considered, it was measured, and it is wrong.
+
+### One implementation detail that is not a detail
+
+**The HTTP client must not follow redirects.** A redirect to the identity provider *is* the
+guarded signature, so following it lands on a login page and returns "unknown" for a hostname
+that is in fact protected — failing in the one direction this ADR calls dangerous. Go's default
+client follows redirects, so the check overrides `CheckRedirect` on a copy of the caller's
+client. Found by a test, not by review.
 
 **Never conclude "protected" from a generic failure.** A dead tunnel, an unpropagated DNS
 record or a crashed proxy make the unauthenticated request fail exactly as a policy would, and

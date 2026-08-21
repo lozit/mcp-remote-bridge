@@ -9,6 +9,9 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- The access-policy check of ADR 0001 — `apply` refuses an entry whose hostname answers an
+  unauthenticated MCP handshake, unless `allow_public = true`. Anything ambiguous warns rather
+  than blocking, so a broken tunnel never masquerades as a security failure.
 - Cloudflare Access service-token support — `[infra] access_client_id` / `access_client_secret`,
   used by a new `hostname_responds` probe that drives a full MCP session through the **public**
   hostname. Without it, a hostname behind an Access policy would report red forever, punishing
