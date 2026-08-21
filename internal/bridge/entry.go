@@ -68,6 +68,19 @@ type Entry struct {
 	// value. It is the most powerful credential in the system: it can modify the
 	// zone's DNS. See docs/SECURITY.md.
 	APIToken string
+
+	// AccessClientID identifies a Cloudflare Access service token. It is an
+	// identifier, not a secret, so it sits in the config in clear like the other
+	// ids.
+	AccessClientID string
+
+	// AccessClientSecret is a SecretSource REFERENCE to the service token's
+	// secret half — never a value.
+	//
+	// Without it, a probe through a hostname guarded by an Access policy eats
+	// the 403 and reports the entry as dead, punishing exactly the setup that
+	// did the right thing (ADR 0001).
+	AccessClientSecret string
 }
 
 // Hostname is the public name this entry is reachable at.

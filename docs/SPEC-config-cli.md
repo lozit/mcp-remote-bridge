@@ -27,6 +27,10 @@ account_id = "abc123..."                 # Cloudflare account
 zone_id    = "def456..."                 # the zone that owns `domain`
 tunnel_id  = "0e5f...-uuid"              # a REMOTELY-MANAGED tunnel (installed from a token)
 api_token  = "keychain:cf-api-token"     # a reference, never a value (rule 3)
+# Optional, for hostnames behind a Cloudflare Access policy. Both or neither:
+# a half-configured token is sent, rejected, and reads as "the MCP is down".
+# access_client_id     = "abc123.access"                  # an identifier, not a secret
+# access_client_secret = "keychain:cf-access-secret"      # a reference
 # keychain = "~/Library/Keychains/mcp.keychain-db"   # optional: a dedicated keychain,
 #   lockable independently of the login keychain, so an unlocked session exposes less
 

@@ -61,6 +61,23 @@ MCP answers. So the signal is the `initialize` **request**, sent twice:
 | ✓ | ✓ | plumbing healthy, **door open** → refuse |
 | ✓ | ✗ *no auth signature* | ambiguous → warn |
 
+**Both signatures measured on a live tunnel, 2026-08-21** — no longer hypothetical:
+
+```
+guarded:  HTTP/2 403
+          cf-access-aud: 52050dc2…
+          cf-access-domain: <hostname>
+
+open:     HTTP/2 200
+          {"result":{"serverInfo":{"name":"mcp-freestyle",…}}}
+```
+
+They were found on the **same tunnel**: one hostname behind an Access policy, one not, with
+nothing in the existing setup signalling the difference. An `apply` would have reported the
+unprotected one all green — port open, MCP responding, hostname responding — because every
+check gets *greener* when the endpoint is open. That is the case this ADR exists for, observed
+in production rather than imagined.
+
 **Never conclude "protected" from a generic failure.** A dead tunnel, an unpropagated DNS
 record or a crashed proxy make the unauthenticated request fail exactly as a policy would, and
 would then read as "secure". Only a **positive authentication signature** — a redirect to an

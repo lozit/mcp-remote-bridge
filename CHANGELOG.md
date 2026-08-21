@@ -9,6 +9,10 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Cloudflare Access service-token support — `[infra] access_client_id` / `access_client_secret`,
+  used by a new `hostname_responds` probe that drives a full MCP session through the **public**
+  hostname. Without it, a hostname behind an Access policy would report red forever, punishing
+  the setup that did the right thing.
 - `CloudflaredExposer` — adds and removes an ingress entry plus a proxied `CNAME` through the
   Cloudflare API, verified against the real API on a throwaway hostname. The read-modify-write preserves everything it does not own, keeps the
   catch-all last, and refuses to delete a DNS record pointing anywhere other than this tunnel.

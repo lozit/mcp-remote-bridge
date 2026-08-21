@@ -26,6 +26,32 @@ func Endpoint(port int) string {
 	return fmt.Sprintf("http://127.0.0.1:%d/mcp", port)
 }
 
+// PublicEndpoint is the URL the entry is reachable at from outside.
+func PublicEndpoint(hostname string) string {
+	return fmt.Sprintf("https://%s/mcp", hostname)
+}
+
+// accessCredentials resolves the entry's Access service token, if it declares
+// one.
+//
+// The secret is fetched at the moment of use and returned to the caller's stack
+// only — like every other secret in this codebase, it is never stored on the
+// Bridge and never logged.
+func (b *Bridge) accessCredentials(entry Entry) (AccessCredentials, error) {
+	if entry.AccessClientID == "" || entry.AccessClientSecret == "" {
+		return AccessCredentials{}, nil
+	}
+	if b.Secrets == nil {
+		return AccessCredentials{}, fmt.Errorf("entry %q declares an Access service token but no secret source is configured", entry.Name)
+	}
+	secret, err := b.Secrets.Get(entry.AccessClientSecret)
+	if err != nil {
+		return AccessCredentials{}, fmt.Errorf("entry %q: resolving the Access client secret from %q: %w",
+			entry.Name, entry.AccessClientSecret, err)
+	}
+	return AccessCredentials{ClientID: entry.AccessClientID, ClientSecret: secret}, nil
+}
+
 // EnsureExposed guarantees that entry is reachable, and returns a probed
 // HealthReport.
 //
@@ -148,10 +174,49 @@ func (b *Bridge) Probe(entry Entry) HealthReport {
 
 	ctx, cancel := context.WithTimeout(context.Background(), MCPProbeTimeout)
 	defer cancel()
-	report.Checks = append(report.Checks,
-		ProbeMCPResponds(ctx, &http.Client{Timeout: MCPProbeTimeout}, Endpoint(port), nil))
+	client := &http.Client{Timeout: MCPProbeTimeout}
+
+	// Loopback needs no credentials: 127.0.0.1 does not pass through Access.
+	report.Checks = append(report.Checks, ProbeMCPResponds(ctx, client, Endpoint(port), nil))
+
+	// The public hostname is probed only when this Bridge actually exposes one.
+	// Without an Exposer nothing was published, so the hostname is not expected
+	// to answer, and a red check would report a failure that is really an
+	// absence — the report must carry facts it established, not facts it
+	// assumed.
+	if b.Exposer != nil && entry.Subdomain != "" && entry.Domain != "" {
+		report.Checks = append(report.Checks, b.probeHostname(ctx, client, entry))
+	}
 
 	return report
+}
+
+// probeHostname runs the deep probe through the public hostname, authenticating
+// to Cloudflare Access when the entry declares a service token.
+//
+// This is the check that answers the question the local probe cannot: is the
+// MCP reachable from where the remote agent actually is?
+func (b *Bridge) probeHostname(ctx context.Context, client *http.Client, entry Entry) Check {
+	hostname := entry.Hostname()
+	check := Check{Name: CheckHostnameResponds, Detail: hostname}
+
+	creds, err := b.accessCredentials(entry)
+	if err != nil {
+		check.Err = err
+		return check
+	}
+
+	got := ProbeMCPResponds(ctx, client, PublicEndpoint(hostname), creds.Decorate())
+	check.OK = got.OK
+	check.Err = got.Err
+	check.Detail = got.Detail
+	if !got.OK && !creds.Configured() {
+		// The likeliest cause of a red here, and the one whose error message
+		// would otherwise send someone debugging a healthy MCP.
+		check.Err = fmt.Errorf("%w — if this hostname is behind a Cloudflare Access policy, "+
+			"set access_client_id and access_client_secret so the probe can authenticate", got.Err)
+	}
+	return check
 }
 
 // DefaultThrottleInterval bounds how fast a repeatedly-failing service retries.

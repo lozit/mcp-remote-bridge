@@ -44,6 +44,15 @@ type Infra struct {
 	// reference: the config never holds the value.
 	APIToken string `toml:"api_token"`
 
+	// AccessClientID and AccessClientSecret authenticate probes to a hostname
+	// guarded by a Cloudflare Access policy. Optional: an unguarded hostname
+	// needs neither.
+	//
+	// The id is an identifier and sits here in clear; the secret is a reference,
+	// validated like every other.
+	AccessClientID     string `toml:"access_client_id"`
+	AccessClientSecret string `toml:"access_client_secret"`
+
 	// Keychain optionally names a specific keychain file to resolve secrets
 	// from. Empty means the user's default search list.
 	//
@@ -132,6 +141,17 @@ func (f *File) validate() []string {
 		if req.value == "" {
 			problems = append(problems, fmt.Sprintf("[infra] %s is required (the Cloudflare API addresses tunnels by id, not by name)", req.name))
 		}
+	}
+	// Both or neither: a half-configured service token is sent, rejected, and
+	// read as "the MCP is down" — a misleading red rather than a visible
+	// misconfiguration.
+	if (f.Infra.AccessClientID == "") != (f.Infra.AccessClientSecret == "") {
+		problems = append(problems, "[infra] access_client_id and access_client_secret must be set together, or neither")
+	}
+	if f.Infra.AccessClientSecret != "" && !isSecretReference(f.Infra.AccessClientSecret) {
+		problems = append(problems, fmt.Sprintf(
+			"[infra] access_client_secret is not a secret reference (expected one of %s)",
+			strings.Join(knownSecretPrefixes, ", ")))
 	}
 	if f.Infra.APIToken == "" {
 		problems = append(problems, "[infra] api_token is required (a secret reference to a Cloudflare API token)")
@@ -234,6 +254,9 @@ func (f *File) Entries() []bridge.Entry {
 			ZoneID:    f.Infra.ZoneID,
 			TunnelID:  f.Infra.TunnelID,
 			APIToken:  f.Infra.APIToken,
+
+			AccessClientID:     f.Infra.AccessClientID,
+			AccessClientSecret: f.Infra.AccessClientSecret,
 		})
 	}
 	return out

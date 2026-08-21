@@ -41,9 +41,12 @@ seams plus `Entry` / `HealthReport` are declared with stubs returning
       (call `ServiceManager.Status`, map to a `Check`, testable against a fake), but what should
       it report when the service is `Loaded` but not `Running` — crashed, or throttled after a
       failure? Decide that and it can be looped.
-- [ ] `[supervised]` — *remaining on the probe: attach Cloudflare Access credentials (the
-      `decorate` hook exists and is unused), and exercise it through a real hostname rather than
-      loopback.* The `mcp_responds` probe itself is **done**.
+- [x] Access service tokens + the `hostname_responds` probe — **implemented**. Still to verify:
+      the two header names come from documentation, not measurement (the only such case in this
+      codebase). The first live run against a guarded hostname is the verification.
+- [ ] `[supervised]` — the access-policy check of ADR 0001: probe the hostname **without**
+      credentials and read the verdict from the signature. Both signatures are now measured and
+      recorded in the ADR; this is mostly wiring.
 - [x] `LaunchdManager` implemented against measured launchctl behaviour: bootstrap is **not**
       idempotent (rc 5 = "already there", despite saying "Input/output error"), rc 3 and rc 113
       are answers rather than failures, and `Running` must come from the pid because `state` is

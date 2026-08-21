@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -232,5 +233,60 @@ subdomain = "sn"
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("missing %q in:\n%s", want, err)
 		}
+	}
+}
+
+// A half-configured service token would be sent, rejected, and read as "the MCP
+// is down" — so the config refuses it rather than letting it become a
+// misleading red at probe time.
+func TestParseRejectsAHalfConfiguredServiceToken(t *testing.T) {
+	base := `
+[infra]
+domain     = "example.com"
+account_id = "a"
+zone_id    = "z"
+tunnel_id  = "u"
+api_token  = "keychain:cf"
+%s
+[mcp.sn]
+command   = "x"
+subdomain = "sn"
+`
+	for _, half := range []string{
+		`access_client_id = "abc.access"`,
+		`access_client_secret = "keychain:cf-access-secret"`,
+	} {
+		if _, err := Parse([]byte(fmt.Sprintf(base, half)), "test.toml"); err == nil {
+			t.Errorf("a config with only %q was accepted", half)
+		}
+	}
+
+	both := `access_client_id = "abc.access"` + "\n" + `access_client_secret = "keychain:cf-access-secret"`
+	if _, err := Parse([]byte(fmt.Sprintf(base, both)), "test.toml"); err != nil {
+		t.Errorf("a fully configured service token was rejected: %v", err)
+	}
+}
+
+// The secret half is a reference like any other; a pasted value is refused.
+func TestParseRejectsAPastedAccessSecret(t *testing.T) {
+	cfg := `
+[infra]
+domain     = "example.com"
+account_id = "a"
+zone_id    = "z"
+tunnel_id  = "u"
+api_token  = "keychain:cf"
+access_client_id     = "abc.access"
+access_client_secret = "actual-secret-value-pasted-here"
+[mcp.sn]
+command   = "x"
+subdomain = "sn"
+`
+	_, err := Parse([]byte(cfg), "test.toml")
+	if err == nil {
+		t.Fatal("a pasted Access client secret was accepted as a reference")
+	}
+	if strings.Contains(err.Error(), "actual-secret-value-pasted-here") {
+		t.Errorf("the error echoed the secret: %v", err)
 	}
 }
