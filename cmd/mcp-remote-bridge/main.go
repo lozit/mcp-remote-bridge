@@ -6,8 +6,11 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
+	"strings"
 
 	"github.com/lozit/mcp-remote-bridge/internal/config"
 	"github.com/lozit/mcp-remote-bridge/internal/keychain"
@@ -31,6 +34,14 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == launchCommand {
 		if err := runLaunch(os.Args[2:]); err != nil {
 			fmt.Fprintf(os.Stderr, "mcp-remote-bridge %s: %v\n", launchCommand, err)
+			os.Exit(exitPrecondition)
+		}
+		return
+	}
+
+	if len(os.Args) > 1 && os.Args[1] == "set-secret" {
+		if err := runSetSecret(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "mcp-remote-bridge set-secret: %v\n", err)
 			os.Exit(exitPrecondition)
 		}
 		return
@@ -105,4 +116,97 @@ func runLaunch(args []string) error {
 		return err
 	}
 	return plan.Exec()
+}
+
+// runSetSecret stores a secret under a reference, reading it from a masked
+// prompt.
+//
+// Usage: set-secret keychain:<service>
+//
+// The value is never an argument, never in the environment, and never echoed:
+// those are the three places a shell would keep a copy of it. It reaches the
+// keychain through the child process's stdin — see keychain.Source.Set.
+func runSetSecret(args []string) error {
+	if len(args) != 1 {
+		return fmt.Errorf("usage: set-secret keychain:<service>")
+	}
+	key := args[0]
+
+	// Check the reference first: prompting for a secret and only then rejecting
+	// the key wastes the one input that is annoying to produce twice.
+	if err := keychain.ValidateKey(key); err != nil {
+		return err
+	}
+
+	value, err := readMasked(fmt.Sprintf("Value for %s: ", key))
+	if err != nil {
+		return err
+	}
+	if value == "" {
+		// An empty secret is almost always a mis-paste, and it would fail much
+		// later as an authentication error with no obvious cause.
+		return fmt.Errorf("refusing to store an empty value for %s", key)
+	}
+
+	if err := keychain.New("").Set(key, value); err != nil {
+		return err
+	}
+	fmt.Printf("Stored %s\n", key)
+	return nil
+}
+
+// readMasked reads one line without echoing it.
+//
+// It shells out to stty rather than taking a terminal dependency: the project
+// has one dependency, argued for in ADR 0005, and disabling echo does not
+// warrant a second.
+//
+// If stdin is not a terminal the value is read plainly from it, which supports
+// piping in scripts — but it says so, because the caller then owns the risk of
+// the value sitting in a shell history or a file.
+func readMasked(prompt string) (string, error) {
+	stat, err := os.Stdin.Stat()
+	if err != nil {
+		return "", fmt.Errorf("inspecting stdin: %w", err)
+	}
+	isTTY := stat.Mode()&os.ModeCharDevice != 0
+
+	if !isTTY {
+		fmt.Fprintln(os.Stderr, "warning: stdin is not a terminal, reading the value unmasked")
+		line, err := bufio.NewReader(os.Stdin).ReadString('\n')
+		if err != nil && line == "" {
+			return "", fmt.Errorf("reading the value: %w", err)
+		}
+		return strings.TrimRight(line, "\r\n"), nil
+	}
+
+	fmt.Fprint(os.Stderr, prompt)
+	if err := stty("-echo"); err != nil {
+		// Refuse rather than fall back to an unmasked read: someone typing a
+		// token expects it not to appear, and surprising them with an echoed
+		// secret is worse than failing.
+		fmt.Fprintln(os.Stderr)
+		return "", fmt.Errorf("cannot disable terminal echo, so the value would be shown as you type it: %w", err)
+	}
+	// Restore the terminal whatever happens next, including a read error: a
+	// shell left with echo disabled is a broken shell.
+	defer func() {
+		_ = stty("echo")
+		fmt.Fprintln(os.Stderr)
+	}()
+
+	line, err := bufio.NewReader(os.Stdin).ReadString('\n')
+	if err != nil && line == "" {
+		return "", fmt.Errorf("reading the value: %w", err)
+	}
+	return strings.TrimRight(line, "\r\n"), nil
+}
+
+func stty(mode string) error {
+	cmd := exec.Command("stty", mode)
+	cmd.Stdin = os.Stdin
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("setting terminal echo %s: %w", mode, err)
+	}
+	return nil
 }

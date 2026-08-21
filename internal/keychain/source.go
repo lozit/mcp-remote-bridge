@@ -48,12 +48,9 @@ func New(keychain string) *Source { return &Source{Keychain: keychain} }
 // launching an MCP with a blank credential is the failure mode this whole path
 // exists to prevent.
 func (s *Source) Get(key string) (string, error) {
-	service, ok := strings.CutPrefix(key, Prefix)
-	if !ok {
-		return "", fmt.Errorf("secret reference %q is not a keychain reference (expected %q prefix)", key, Prefix)
-	}
-	if service == "" {
-		return "", fmt.Errorf("secret reference %q names no service", key)
+	service, err := serviceFromKey(key)
+	if err != nil {
+		return "", err
 	}
 
 	// -g, not -w. -w prints a bare hex string for any value containing a
@@ -82,6 +79,89 @@ func (s *Source) Get(key string) (string, error) {
 		return "", fmt.Errorf("reading %q from the keychain: %w", service, err)
 	}
 	return value, nil
+}
+
+// Account is the account name written on items this tool creates, so a keychain
+// entry is traceable to its origin.
+const Account = "mcp-remote-bridge"
+
+// Set stores value under key, replacing any existing item.
+//
+// The value is written through the process's STDIN, never as an argument.
+// `security add-generic-password -w <value>` would place the secret in the
+// child's argv, where any local `ps` can read it for the lifetime of the call —
+// short, but the invariant says "no secret value on a command line" without an
+// exception for duration.
+//
+// Measured 2026-08-21: `-w` with no value reads the password from stdin and
+// asks for it TWICE (entry plus confirmation), so the value is written twice.
+// Sending it once makes security report "passwords don't match", retry, read
+// EOF twice, and silently store an EMPTY password — a failure that looks like
+// success. That is why this is a measured contract and not an obvious one.
+func (s *Source) Set(key, value string) error {
+	service, err := serviceFromKey(key)
+	if err != nil {
+		return err
+	}
+
+	// security's own usage says: "Specify -w as the last option to be prompted."
+	// Nothing may follow it — including the positional [keychain] argument, which
+	// -w would otherwise swallow as the password, writing the keychain PATH into
+	// the DEFAULT keychain while reporting success. Measured; it is a quiet
+	// failure, so this refuses rather than falling back to -w <value>.
+	if s.Keychain != "" {
+		return fmt.Errorf(
+			"cannot write to the keychain at %s: security(1) can target a specific keychain "+
+				"or read the password from stdin, but not both, and passing the value as an "+
+				"argument would expose it to any local `ps`. Store this secret in the default "+
+				"keychain, or add it to %s by hand",
+			s.Keychain, s.Keychain)
+	}
+
+	cmd := exec.Command("security", "add-generic-password", "-U", "-s", service, "-a", Account, "-w")
+	cmd.Stdin = strings.NewReader(value + "\n" + value + "\n")
+
+	var out strings.Builder
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	if err := cmd.Run(); err != nil {
+		// The output holds security's prompts, not the value, but it is not
+		// worth the risk of quoting it: name the service and nothing else.
+		return fmt.Errorf("storing %q in the keychain: %w", service, err)
+	}
+
+	// Verify the effect rather than trusting the write: an empty or mismatched
+	// read here is exactly the silent-empty-password failure described above.
+	stored, err := s.Get(key)
+	if err != nil {
+		return fmt.Errorf("storing %q appeared to succeed but it cannot be read back: %w", service, err)
+	}
+	if stored != value {
+		return fmt.Errorf("storing %q appeared to succeed but the value read back differs", service)
+	}
+	return nil
+}
+
+// ValidateKey reports whether key is a well-formed keychain reference.
+//
+// Exported so a caller can check the reference BEFORE prompting for a value:
+// asking someone to type a secret and only then rejecting the key wastes the
+// one thing that is expensive to re-enter.
+func ValidateKey(key string) error {
+	_, err := serviceFromKey(key)
+	return err
+}
+
+// serviceFromKey validates a reference and returns the service name in it.
+func serviceFromKey(key string) (string, error) {
+	service, ok := strings.CutPrefix(key, Prefix)
+	if !ok {
+		return "", fmt.Errorf("secret reference %q is not a keychain reference (expected %q prefix)", key, Prefix)
+	}
+	if service == "" {
+		return "", fmt.Errorf("secret reference %q names no service", key)
+	}
+	return service, nil
 }
 
 // parsePasswordLine extracts the value from security -g output.

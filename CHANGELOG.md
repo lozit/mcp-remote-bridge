@@ -9,6 +9,9 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- `set-secret keychain:<service>` — stores a secret from a masked prompt. The value never
+  touches an `argv`, an environment variable, or the terminal: it reaches the keychain through
+  `security`'s stdin.
 - `EnsureExposed` / `RemoveExposed` / `Probe` — the primitive, assembling the seams. Verified by
   a walking-skeleton test running against real launchd, real mcp-proxy and a real keychain.
 - `AutoPort` — a stable port derived from the entry name, so a re-apply does not rewrite the

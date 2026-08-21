@@ -94,9 +94,17 @@ line, nor a shell's environment**.
   carries the secret on **stderr**: whatever buffer captures it must never reach a logger.
 - **Where secrets live**: the macOS keychain (MVP). Linux gets libsecret or a `600` env
   file behind the same `SecretSource` interface — deferred.
-- **How a secret gets in**: `mcp-remote-bridge set-secret <key>`, reading from a **masked
-  stdin prompt**. Never an argument (it would land in `argv` and shell history), never the
-  environment.
+- **How a secret gets in**: `mcp-remote-bridge set-secret keychain:<service>`, reading from a
+  **masked prompt** (`stty -echo`). Never an argument (it would land in `argv` and shell
+  history), never the environment.
+  The value reaches `security(1)` through **its stdin**, never as `-w <value>`, which would put
+  it in that process's `argv` where any local `ps` can read it. Measured: `-w` with no value
+  reads the password from stdin and asks for it **twice**; sending it once makes security
+  report a mismatch, retry, read EOF, and silently store an **empty** password — a failure that
+  looks like success, which is why `Set` reads the value back before reporting success.
+  Consequence: `security` cannot both target a named keychain and read stdin (`-w` must be the
+  last option), so `set-secret` writes to the **default** keychain and refuses a named one
+  rather than falling back to the exposing form.
 - **`config.toml` is committable** — that is a designed property, not an accident. A user
   can put it in a dotfiles repo without leaking anything.
 - **NEVER commit a secret.** See `.gitignore`.

@@ -56,7 +56,10 @@ seams plus `Entry` / `HealthReport` are declared with stubs returning
       `internal/launchd/plist_test.go`; one PLAN task found already done, one absorbed into that
       test (2026-08-21)
 - [x] `__launch` + `internal/launcher` — **done**, with mutation-verified argv invariants.
-- [x] `KeychainSecretSource` — **done** (ADR 0004: `-g`, not `-w`).
+- [x] `KeychainSecretSource` — **done** (ADR 0004: `-g`, not `-w`), read **and** write.
+- [x] `set-secret` — **done**. Masked prompt, value piped to `security` stdin, never in `argv`.
+      Known limit, deliberate: writes to the default keychain only, because `security` cannot
+      combine a named keychain with a stdin read.
 - [x] Config parser — **done** (ADR 0005). Strict TOML, every problem reported at once, secret
       references validated, subdomain/port collisions rejected.
 - [x] `__launch` — **done**. Resolves secrets, builds a minimal explicit environment,

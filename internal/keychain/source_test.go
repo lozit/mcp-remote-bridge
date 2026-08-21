@@ -156,3 +156,51 @@ func TestGetReportsAMissingSecret(t *testing.T) {
 		t.Errorf("Get returned a value alongside its error: %q", got)
 	}
 }
+
+// Set writes through stdin, so the value never reaches an argv. It therefore
+// cannot also target a named keychain: security(1) requires -w to be the last
+// option, which leaves no room for the positional [keychain] argument.
+//
+// There is no integration test for the happy path on purpose. Exercising it
+// would mean writing into the user's DEFAULT keychain — the only one Set can
+// reach — and a test that pollutes the developer's real keychain to prove a
+// point is a worse trade than verifying this path by hand. It was verified by
+// hand on 2026-08-21: a value round-tripped through `-w` reading stdin twice.
+func TestSetRefusesANamedKeychain(t *testing.T) {
+	s := &Source{Keychain: "/tmp/whatever.keychain"}
+
+	// A distinctive value: a common word like "value" appears legitimately in the
+	// error text, which would make this assertion a false positive.
+	const secret = "SECRET-VALUE-MUST-NOT-APPEAR-IN-ERRORS"
+
+	err := s.Set(Prefix+"some-service", secret)
+
+	if err == nil {
+		t.Fatal("Set accepted a named keychain; it would have written the keychain PATH as the password into the DEFAULT keychain")
+	}
+	if strings.Contains(err.Error(), secret) {
+		t.Errorf("the error leaked the value: %v", err)
+	}
+}
+
+func TestSetRejectsANonKeychainReference(t *testing.T) {
+	s := &Source{}
+	for _, key := range []string{"vault:thing", "bare-name", "", Prefix} {
+		if err := s.Set(key, "x"); err == nil {
+			t.Errorf("Set(%q) accepted a reference it cannot resolve", key)
+		}
+	}
+}
+
+// serviceFromKey is what both Get and Set validate with, so it is worth pinning
+// separately from either.
+func TestServiceFromKey(t *testing.T) {
+	if got, err := serviceFromKey(Prefix + "cf-api-token"); err != nil || got != "cf-api-token" {
+		t.Errorf("serviceFromKey = %q, %v", got, err)
+	}
+	for _, bad := range []string{"", "cf-api-token", "vault:x", Prefix} {
+		if _, err := serviceFromKey(bad); err == nil {
+			t.Errorf("serviceFromKey(%q) accepted it", bad)
+		}
+	}
+}
