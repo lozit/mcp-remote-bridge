@@ -59,16 +59,22 @@ type Plan struct {
 // A referenced secret that cannot be resolved fails here, before anything is
 // launched: a proxy that starts without its credential would 401 silently,
 // which is the failure this whole path exists to prevent.
-func Build(entry bridge.Entry, src bridge.SecretSource, port int, lookPath func(string) (string, error)) (Plan, error) {
+// proxyPath, when non-empty, is the absolute path of mcp-proxy resolved at
+// apply time. It is preferred over a PATH lookup because under launchd the PATH
+// is minimal and would not find a proxy installed in ~/.local/bin.
+func Build(entry bridge.Entry, src bridge.SecretSource, port int, proxyPath string, lookPath func(string) (string, error)) (Plan, error) {
 	if lookPath == nil {
 		lookPath = exec.LookPath
 	}
 	if port <= 0 || port > 65535 {
 		return Plan{}, fmt.Errorf("entry %q has no usable port (%d)", entry.Name, port)
 	}
-	proxy, err := lookPath(ProxyBinary)
-	if err != nil {
-		return Plan{}, fmt.Errorf("%s is a precondition and was not found: %w", ProxyBinary, err)
+	proxy := proxyPath
+	if proxy == "" {
+		var err error
+		if proxy, err = lookPath(ProxyBinary); err != nil {
+			return Plan{}, fmt.Errorf("%s is a precondition and was not found: %w", ProxyBinary, err)
+		}
 	}
 	if entry.Command == "" {
 		return Plan{}, fmt.Errorf("entry %q has no command", entry.Name)

@@ -14,6 +14,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/lozit/mcp-remote-bridge/internal/bridge"
 )
@@ -132,12 +133,28 @@ func (m *Manager) Ensure(label string, spec bridge.ServiceSpec) error {
 	return nil
 }
 
+// UnloadTimeout bounds how long Remove waits for a booted-out service to
+// actually disappear.
+//
+// Measured 2026-08-21: `launchctl bootout` returns in ~5ms while the job is
+// still loaded and its port still listening; it was gone ~230ms later. The
+// command reports that it was accepted, not that it took effect — so Remove
+// waits for the effect rather than trusting the write. The bound is generous
+// because launchd gives a job an exit timeout of its own before killing it.
+const UnloadTimeout = 15 * time.Second
+
 // Remove unloads the service and deletes its definition.
 //
 // It is the exact inverse of Ensure, and idempotent: a label that is already
 // gone is the desired state, not an error.
+//
+// It returns only once the service has actually gone, not once launchctl has
+// accepted the request — see UnloadTimeout.
 func (m *Manager) Remove(label string) error {
 	if err := m.bootout(label); err != nil {
+		return err
+	}
+	if err := m.waitUnloaded(label); err != nil {
 		return err
 	}
 	path, err := m.plistPath(label)
@@ -148,6 +165,24 @@ func (m *Manager) Remove(label string) error {
 		return fmt.Errorf("removing %s: %w", path, err)
 	}
 	return nil
+}
+
+// waitUnloaded blocks until the label is gone from the domain.
+func (m *Manager) waitUnloaded(label string) error {
+	deadline := time.Now().Add(UnloadTimeout)
+	for {
+		state, err := m.Status(label)
+		if err != nil {
+			return err
+		}
+		if !state.Loaded {
+			return nil
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("%s is still loaded %v after being booted out", label, UnloadTimeout)
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
 }
 
 // bootout unloads a label, treating "not loaded" as success.

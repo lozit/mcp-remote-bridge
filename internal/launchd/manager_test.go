@@ -233,3 +233,38 @@ func TestStatusDistinguishesLoadedFromRunning(t *testing.T) {
 		t.Errorf("LastExitCode = %d, want 42 — the exit status is how a caller learns why it died", st.LastExitCode)
 	}
 }
+
+// Remove must return only once the service has actually gone.
+//
+// `launchctl bootout` returns in a few milliseconds while the job is still
+// loaded and still holding its port; measured, it took ~230ms more to
+// disappear. A Remove that returned on the command's exit code would be
+// reporting the write, not the effect — and a caller re-probing immediately
+// would see a service it was just told had been removed.
+//
+// The fixture traps SIGTERM so launchd has to escalate, widening the gap from a
+// lucky race into a certainty.
+func TestRemoveWaitsForTheServiceToActuallyGo(t *testing.T) {
+	m, label := newManager(t)
+
+	spec := specFor(t, label, `trap "" TERM; sleep 300`)
+	if err := m.Ensure(label, spec); err != nil {
+		t.Fatalf("Ensure: %v", err)
+	}
+	if st, _ := m.Status(label); !st.Running {
+		t.Fatalf("precondition failed: the service is not running: %+v", st)
+	}
+
+	if err := m.Remove(label); err != nil {
+		t.Fatalf("Remove: %v", err)
+	}
+
+	// No sleep here on purpose: Remove is supposed to have waited.
+	st, err := m.Status(label)
+	if err != nil {
+		t.Fatalf("Status: %v", err)
+	}
+	if st.Loaded {
+		t.Errorf("Remove returned while the service was still loaded: %+v", st)
+	}
+}

@@ -9,6 +9,10 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- `EnsureExposed` / `RemoveExposed` / `Probe` — the primitive, assembling the seams. Verified by
+  a walking-skeleton test running against real launchd, real mcp-proxy and a real keychain.
+- `AutoPort` — a stable port derived from the entry name, so a re-apply does not rewrite the
+  service definition and restart the MCP.
 - `LaunchdManager` — `Ensure` / `Remove` / `Status` over `launchctl`, reconciling rather than
   creating: a no-op when the definition is unchanged, a repair when it changed or the service
   drifted out of the loaded state, and an idempotent `Remove`.
@@ -50,6 +54,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 - Project bootstrapped with groundrules on 2026-08-20
 
 ### Changed
+- `LaunchdManager.Remove` now waits for the service to actually go, rather than returning when
+  `launchctl bootout` is accepted — the two are up to ~230ms apart.
 - **The Exposer targets remotely-managed tunnels via the Cloudflare API**, not
   `cloudflared tunnel route dns` (ADR 0006). `[infra]` loses `tunnel` and gains `account_id`,
   `zone_id`, `tunnel_id` and `api_token`. **Breaking** for any config written against the

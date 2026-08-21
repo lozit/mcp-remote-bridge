@@ -14,36 +14,33 @@ type Bridge struct {
 	Services ServiceManager
 	Exposer  Exposer
 	Secrets  SecretSource
+
+	// BinaryPath is the absolute path of this binary, resolved at apply time via
+	// os.Executable and written into the service definition. The service outlives
+	// the shell that created it, so a relative path has nothing to resolve
+	// against.
+	BinaryPath string
+
+	// ConfigPath is the absolute path the launcher reloads the entry from.
+	ConfigPath string
+
+	// LogDir is where per-entry proxy logs go — one file each, so two MCPs'
+	// output never interleaves.
+	LogDir string
+
+	// ProxyPath is the absolute path of mcp-proxy, resolved by the caller at
+	// apply time.
+	//
+	// It is resolved here rather than looked up in the launcher because under
+	// launchd the PATH is minimal — measured as /usr/bin:/bin:/usr/sbin:/sbin —
+	// so a PATH lookup at launch time fails for anything installed in
+	// ~/.local/bin or /opt/homebrew/bin. Resolving at apply time, where the
+	// user's own PATH applies, and writing the absolute path into the service
+	// definition keeps the plist free of an environment section.
+	ProxyPath string
 }
 
 // New returns a Bridge wired to the given seam implementations.
 func New(services ServiceManager, exposer Exposer, secrets SecretSource) *Bridge {
 	return &Bridge{Services: services, Exposer: exposer, Secrets: secrets}
-}
-
-// EnsureExposed guarantees that entry is reachable from outside, and returns a
-// probed HealthReport.
-//
-// Load-bearing rule 1: it reconciles rather than creates. Run twice on a
-// healthy entry it is a no-op; run on a drifted entry it repairs only what
-// drifted. It never duplicates.
-//
-// A referenced secret that is absent makes this fail loudly here, at start,
-// rather than launching a proxy that will 401 silently.
-func (b *Bridge) EnsureExposed(e Entry) (HealthReport, error) {
-	return HealthReport{Entry: e.Name}, ErrNotImplemented
-}
-
-// RemoveExposed tears down the entry named name, and returns a probed
-// HealthReport confirming the teardown.
-//
-// It is the exact inverse of EnsureExposed. It is always explicit: reconciling
-// a config never triggers it, because an edit must not be silently destructive.
-func (b *Bridge) RemoveExposed(name string) (HealthReport, error) {
-	return HealthReport{Entry: name}, ErrNotImplemented
-}
-
-// Probe runs the health checks for entry without changing anything.
-func (b *Bridge) Probe(e Entry) (HealthReport, error) {
-	return HealthReport{Entry: e.Name}, ErrNotImplemented
 }

@@ -12,6 +12,27 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Integration tests that share a global resource are not isolated, they are sequenced
+
+**Why**: the walking-skeleton tests derived their entry name from the process id, so every test
+in the file used the **same** name — and the name determines both the launchd label and the
+auto-assigned port. Two global resources, shared by five tests.
+
+The failure it produced was not a clean one. One test's cleanup ran `launchctl bootout`, which
+returns before the service is actually gone; the next test's `Ensure` then called `bootstrap` on
+a label that was still loaded, and since bootstrap-on-a-loaded-label is correctly treated as
+"already there", the second test **silently inherited the first test's service** — pointing at
+the first test's binary and config, in a temp directory that was already being deleted.
+
+Symptom: one test failed only when run with the others, and passed in isolation. It burned 30
+seconds waiting for a state that could not arrive.
+
+**When to apply**: any test that touches something the OS namespaces globally — a port, a
+service label, a socket path, a well-known file, a database name. Derive the identity from
+`t.Name()`, not from the process, the clock, or a constant. And treat "passes alone, fails in
+the suite" as evidence of a shared resource rather than of flakiness: flakiness is what it looks
+like, interference is what it is.
+
 ## A tool's exit codes and its error messages are two different things
 
 **Why**: `launchctl bootstrap` on an already-loaded label fails with

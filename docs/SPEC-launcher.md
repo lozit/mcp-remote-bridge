@@ -160,6 +160,16 @@ upgrade and treat a change as a spec change.
 | `print` | loaded | 0 | job fields | — |
 | `print` | absent | **113** | `Bad request` | **not loaded** |
 
+**`bootout` returns before it has taken effect.** Measured with mcp-proxy behind the service:
+the command returned at t+5ms while the job was still loaded and its port still listening;
+everything was gone at t+227ms. The exit code says the request was accepted, not that the
+service is gone — so `Remove` waits for the effect rather than trusting the write. (With a
+`/bin/sh sleep` fixture the gap is ~5ms, which is why a cheap fixture hides this.)
+
+**launchd gives a job a minimal PATH** — `/usr/bin:/bin:/usr/sbin:/sbin`. A proxy installed in
+`~/.local/bin` is therefore not on it, so the absolute path of `mcp-proxy` is resolved at apply
+time and passed to `__launch` explicitly rather than looked up at launch.
+
 Two consequences for the reconciler:
 
 - **`bootstrap` is not idempotent.** "Just bootstrap it" is not an implementation of `Ensure`:

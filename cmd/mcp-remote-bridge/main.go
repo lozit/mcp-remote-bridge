@@ -44,9 +44,9 @@ func main() {
 // runLaunch resolves one entry's secrets and execs the proxy. On success it
 // does not return: this process becomes mcp-proxy.
 //
-// Usage: __launch <name> --config <path> --port <n>
+// Usage: __launch <name> --config <path> --port <n> [--proxy <path>]
 func runLaunch(args []string) error {
-	var name, configPath string
+	var name, configPath, proxyPath string
 	port := 0
 
 	if len(args) == 0 {
@@ -61,6 +61,11 @@ func runLaunch(args []string) error {
 				return fmt.Errorf("--config needs a path")
 			}
 			configPath, args = args[1], args[2:]
+		case "--proxy":
+			if len(args) < 2 {
+				return fmt.Errorf("--proxy needs a path")
+			}
+			proxyPath, args = args[1], args[2:]
 		case "--port":
 			if len(args) < 2 {
 				return fmt.Errorf("--port needs a number")
@@ -95,7 +100,7 @@ func runLaunch(args []string) error {
 
 	// Build resolves the secrets. It fails here, before anything is launched,
 	// if one is missing — rather than starting a proxy that 401s silently.
-	plan, err := launcher.Build(entry, keychain.New(cfg.Infra.Keychain), port, nil)
+	plan, err := launcher.Build(entry, keychain.New(cfg.Infra.Keychain), port, proxyPath, nil)
 	if err != nil {
 		return err
 	}

@@ -39,7 +39,7 @@ func testEntry() bridge.Entry {
 
 func build(t *testing.T, e bridge.Entry, src bridge.SecretSource) Plan {
 	t.Helper()
-	p, err := Build(e, src, 8080, fakeLookPath)
+	p, err := Build(e, src, 8080, "", fakeLookPath)
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
@@ -102,7 +102,7 @@ func TestBuildDoesNotInheritTheAmbientEnvironment(t *testing.T) {
 
 // An absent secret must stop everything, not launch a proxy that 401s silently.
 func TestBuildFailsWhenASecretIsMissing(t *testing.T) {
-	_, err := Build(testEntry(), fakeSource{}, 8080, fakeLookPath)
+	_, err := Build(testEntry(), fakeSource{}, 8080, "", fakeLookPath)
 	if err == nil {
 		t.Fatal("Build succeeded with an unresolvable secret reference")
 	}
@@ -114,14 +114,14 @@ func TestBuildFailsWhenASecretIsMissing(t *testing.T) {
 // The error path is where leaks hide: it is the branch nobody re-reads.
 func TestBuildErrorsNeverContainASecretValue(t *testing.T) {
 	failing := fakeSource{}
-	_, err := Build(testEntry(), failing, 8080, fakeLookPath)
+	_, err := Build(testEntry(), failing, 8080, "", fakeLookPath)
 	if err != nil && strings.Contains(err.Error(), secretValue) {
 		t.Errorf("error leaked the secret value: %v", err)
 	}
 
 	// Also when the source returns a value alongside an error.
 	weird := brokenSource{value: secretValue}
-	_, err = Build(testEntry(), weird, 8080, fakeLookPath)
+	_, err = Build(testEntry(), weird, 8080, "", fakeLookPath)
 	if err == nil {
 		t.Fatal("Build ignored an error from the secret source")
 	}
@@ -170,7 +170,7 @@ func TestBuildSeparatesTheMCPCommand(t *testing.T) {
 
 func TestBuildRejectsAnUnusablePort(t *testing.T) {
 	for _, port := range []int{0, -1, 70000} {
-		if _, err := Build(testEntry(), fakeSource{"keychain:sn-token": secretValue}, port, fakeLookPath); err == nil {
+		if _, err := Build(testEntry(), fakeSource{"keychain:sn-token": secretValue}, port, "", fakeLookPath); err == nil {
 			t.Errorf("Build accepted port %d", port)
 		}
 	}
@@ -178,7 +178,7 @@ func TestBuildRejectsAnUnusablePort(t *testing.T) {
 
 func TestBuildFailsWhenTheProxyIsAbsent(t *testing.T) {
 	absent := func(string) (string, error) { return "", errors.New("not found") }
-	_, err := Build(testEntry(), fakeSource{"keychain:sn-token": secretValue}, 8080, absent)
+	_, err := Build(testEntry(), fakeSource{"keychain:sn-token": secretValue}, 8080, "", absent)
 	if err == nil {
 		t.Fatal("Build succeeded without mcp-proxy, which is a precondition")
 	}
@@ -191,7 +191,7 @@ func TestBuildFailsWhenTheProxyIsAbsent(t *testing.T) {
 func TestBuildWorksWithoutSecrets(t *testing.T) {
 	e := testEntry()
 	e.Secrets = nil
-	p, err := Build(e, nil, 8080, fakeLookPath)
+	p, err := Build(e, nil, 8080, "", fakeLookPath)
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}

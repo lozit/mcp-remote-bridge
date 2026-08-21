@@ -82,11 +82,11 @@ seams plus `Entry` / `HealthReport` are declared with stubs returning
       and loses `tunnel`; the parser must validate `api_token` as a secret reference like any
       other. `doctor` checks the new preconditions (connector running, token present — never
       tested with a write).
-- [ ] `[supervised]` — *cross-cutting: orchestrates all three seams.* `ensure_exposed` —
-      the reconcile loop: detect what drifted, repair only that
-- [ ] `[supervised]` — *cross-cutting, and its acceptance is a real teardown observed on a
-      real hostname.* `remove_exposed` — verify it is the *exact* inverse (hostname stops
-      answering)
+- [x] `ensure_exposed` / `remove_exposed` — **done for the local half**: the walking skeleton
+      runs end to end against real launchd, real mcp-proxy and a real keychain, with the Exposer
+      left out. Remaining: wire the Exposer in once the Cloudflare credentials exist.
+- [ ] `[supervised]` — `remove_exposed` through a **real hostname**: verify the public name
+      stops answering, not just the local port. Needs the tunnel.
 - [ ] `[supervised]` — *the task **is** the oracle. A loop writing these would author its
       own grading criteria (writer = maker) and the back pressure disappears. These are the
       tests to write by hand, or in a reflection session — never in the loop.* Tests for the
