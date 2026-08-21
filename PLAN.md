@@ -44,6 +44,10 @@ seams plus `Entry` / `HealthReport` are declared with stubs returning
 - [ ] `[supervised]` — *remaining on the probe: attach Cloudflare Access credentials (the
       `decorate` hook exists and is unused), and exercise it through a real hostname rather than
       loopback.* The `mcp_responds` probe itself is **done**.
+- [x] `LaunchdManager` implemented against measured launchctl behaviour: bootstrap is **not**
+      idempotent (rc 5 = "already there", despite saying "Input/output error"), rc 3 and rc 113
+      are answers rather than failures, and `Running` must come from the pid because `state` is
+      transiently `xpcproxy` right after bootstrap (2026-08-21)
 - [x] Loop run #2: `BuildPlist` delivered and verified. The verifier went past the frozen test
       and loaded the plist into real launchd (`launchctl bootstrap` + `print`), which is the check
       that actually proves launchd accepts it. Follow-up found by probing the zero value:
@@ -63,8 +67,9 @@ seams plus `Entry` / `HealthReport` are declared with stubs returning
       (`ServiceSpec` carries none, so that check could never fail) but **exactly these seven
       keys and no others**: it is what catches a future `EnvironmentVariables` section, which is
       the natural place someone would put credentials in a world-readable file.
-- [ ] `[supervised]` — *`bootstrap`/`bootout`/`Status` drive real launchd state.*
-      `LaunchdManager` — `bootstrap` / `bootout`, `Status`
+- [x] `LaunchdManager` — **done**. `Ensure` reconciles (no-op when unchanged, repairs a changed
+      definition, reloads after an external unload), `Remove` is its idempotent inverse, `Status`
+      reports an unknown label as not-loaded. Tested against real launchctl.
 - [x] Plist generation — **done** by the loop, then hardened: a `ThrottleInterval` under 1s is
       now refused, since it rendered as `0` and disabled throttling (2026-08-21).
 - [ ] `[supervised]` — *real network and DNS side effects on a shared tunnel; not a bounded

@@ -12,6 +12,28 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## A tool's exit codes and its error messages are two different things
+
+**Why**: `launchctl bootstrap` on an already-loaded label fails with
+`Bootstrap failed: 5: Input/output error`. There is no I/O problem — it means "already there".
+Taken at face value the message sends you debugging disks and permissions; taken as an exit code
+with a measured meaning, it is the ordinary case a reconciler must handle. Likewise `bootout` on
+an absent label returns 3 `No such process` and `print` on an unknown label returns 113
+`Bad request`, both of which are **answers**, not failures: already-gone is `Remove`'s desired
+state, and unknown is `Status`'s honest reply.
+
+The same session produced a second instance in the same tool. `launchctl print` reports
+`state = xpcproxy` for a moment after bootstrap, before it becomes `running`, so deriving
+"is it running?" from `state == "running"` is a race that calls a healthy service stopped. The
+reliable signal is the presence of a `pid`. Three tests failed on it before the cause was
+visible.
+
+**When to apply**: whenever you shell out to a tool and branch on failure. Measure the exit code
+for each state you care about — including the states you expect to be *normal* — and write the
+meaning next to the constant, with the date. Never branch on message text, and do not assume the
+message describes the code. Then, separately, check whether the field you are parsing is
+**stable**: a value read immediately after an action may be a transient one.
+
 ## Validating a file format is not validating that its consumer accepts it
 
 **Why**: the frozen acceptance test for `BuildPlist` validated generated plists with

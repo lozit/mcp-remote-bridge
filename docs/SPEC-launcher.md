@@ -146,6 +146,34 @@ That is the whole reason the launcher exists.
 Consequence: moving or uninstalling the binary breaks every service. `doctor` checks the
 recorded path still exists.
 
+## launchctl, as measured (2026-08-21)
+
+These exit codes are undocumented and their messages mislead. Re-measure on a macOS major
+upgrade and treat a change as a spec change.
+
+| Command | State | rc | Message | Means |
+|---|---|---|---|---|
+| `bootstrap` | absent | 0 | — | loaded |
+| `bootstrap` | **already loaded** | **5** | `Input/output error` | **already there** — not an I/O problem |
+| `bootout` | loaded | 0 | — | unloaded |
+| `bootout` | **absent** | **3** | `No such process` | **already in the desired state** |
+| `print` | loaded | 0 | job fields | — |
+| `print` | absent | **113** | `Bad request` | **not loaded** |
+
+Two consequences for the reconciler:
+
+- **`bootstrap` is not idempotent.** "Just bootstrap it" is not an implementation of `Ensure`:
+  it fails on the second call. `Ensure` reads the state first, and only boots out and back in
+  when the definition actually changed.
+- **rc 3 and rc 113 are answers, not failures.** A label that is already gone is `Remove`'s
+  desired state; an unknown label is `Status`'s honest "not loaded". Treating either as an error
+  would make the reconciler refuse to converge.
+
+**`Running` comes from the presence of a `pid`, not from the `state` field.** Immediately after
+`bootstrap`, `print` reports `state = xpcproxy` — a transient value while launchd spawns the job
+— and only later `running`. Comparing against `"running"` is a race that reports a healthy
+service as stopped. A job that has exited has no `pid` line at all.
+
 ## Failure modes handled explicitly
 
 **A referenced secret is missing.** Two gates, on purpose:

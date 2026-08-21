@@ -9,6 +9,9 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- `LaunchdManager` — `Ensure` / `Remove` / `Status` over `launchctl`, reconciling rather than
+  creating: a no-op when the definition is unchanged, a repair when it changed or the service
+  drifted out of the loaded state, and an idempotent `Remove`.
 - `BuildPlist` — renders a `bridge.ServiceSpec` as a launchd plist carrying exactly seven
   keys and no environment section, verified by having launchd itself load the generated
   document. Refuses a spec it cannot render honestly, including a `ThrottleInterval` under 1s
