@@ -153,8 +153,14 @@ Three properties the read-modify-write must respect, none of them guessable:
 3. **`warp-routing` lives in the same `config` object.** A `PUT` sending only `ingress` erases
    it.
 
-There is also a `version` counter in the response. Whether it can serve as a compare-and-swap
-token is unknown; until it is, the mitigation stays "read immediately before writing".
+There is also a `version` counter in the response, and it is useful for more than concurrency:
+it increments once per write, so it is an **independent measure of whether a run wrote
+anything**. A live round trip took it from 2 to 4 — one `Ensure`, one `Remove`, and a repeated
+`Ensure` that correctly wrote nothing. That is rule 1 confirmed from Cloudflare's side rather
+than from our own code.
+
+Whether it can serve as a compare-and-swap token is still unknown; until it is, the mitigation
+stays "read immediately before writing".
 
 ## Notes
 

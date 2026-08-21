@@ -10,7 +10,7 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ### Added
 - `CloudflaredExposer` — adds and removes an ingress entry plus a proxied `CNAME` through the
-  Cloudflare API. The read-modify-write preserves everything it does not own, keeps the
+  Cloudflare API, verified against the real API on a throwaway hostname. The read-modify-write preserves everything it does not own, keeps the
   catch-all last, and refuses to delete a DNS record pointing anywhere other than this tunnel.
 - `set-secret keychain:<service>` — stores a secret from a masked prompt. The value never
   touches an `argv`, an environment variable, or the terminal: it reaches the keychain through

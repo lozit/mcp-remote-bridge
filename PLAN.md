@@ -78,9 +78,13 @@ seams plus `Entry` / `HealthReport` are declared with stubs returning
 - [x] `CloudflaredExposer` — **implemented**, tested against a fixture captured from the real
       tunnel configuration, with mutation checks on the two costliest errors (appending after
       the catch-all, and dropping `warp-routing`).
-- [ ] `[supervised]` — **exercise the Exposer against the real API**, on a throwaway hostname,
-      never on a production entry. This is the only remaining unverified seam: every test so far
-      runs against a local stand-in for Cloudflare.
+- [x] Exposer exercised against the **real Cloudflare API** (2026-08-21): a throwaway hostname
+      added, re-ensured (no write — confirmed by the `version` counter not moving), then removed,
+      with the configuration byte-identical before and after and no DNS residue. All three seams
+      have now touched reality.
+- [ ] `[supervised]` — the **complete** walking skeleton: `EnsureExposed` with the Exposer wired
+      in, verified through the public hostname rather than loopback. Needs the `mcp_responds`
+      probe to carry Access credentials first if a policy guards the hostname.
 - [ ] `[supervised]` — config: `[infra]` gains `account_id`, `zone_id`, `tunnel_id`, `api_token`
       and loses `tunnel`; the parser must validate `api_token` as a secret reference like any
       other. `doctor` checks the new preconditions (connector running, token present — never
