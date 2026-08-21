@@ -75,12 +75,12 @@ seams plus `Entry` / `HealthReport` are declared with stubs returning
       reports an unknown label as not-loaded. Tested against real launchctl.
 - [x] Plist generation — **done** by the loop, then hardened: a `ThrottleInterval` under 1s is
       now refused, since it rendered as `0` and disabled throttling (2026-08-21).
-- [ ] `[supervised]` — *real network and DNS side effects on a shared tunnel; not a bounded
-      blast radius.* `CloudflaredExposer` — ingress entry + proxied `CNAME` **via the Cloudflare
-      API** ([ADR 0006](docs/decisions/0006-exposer-targets-remotely-managed-tunnels.md)).
-      Watch the read-modify-write on `PUT .../configurations`: it replaces the whole ingress
-      list, so two concurrent runs — or a dashboard edit between the read and the write — drop
-      entries silently. Re-read immediately before writing and preserve what we did not create.
+- [x] `CloudflaredExposer` — **implemented**, tested against a fixture captured from the real
+      tunnel configuration, with mutation checks on the two costliest errors (appending after
+      the catch-all, and dropping `warp-routing`).
+- [ ] `[supervised]` — **exercise the Exposer against the real API**, on a throwaway hostname,
+      never on a production entry. This is the only remaining unverified seam: every test so far
+      runs against a local stand-in for Cloudflare.
 - [ ] `[supervised]` — config: `[infra]` gains `account_id`, `zone_id`, `tunnel_id`, `api_token`
       and loses `tunnel`; the parser must validate `api_token` as a secret reference like any
       other. `doctor` checks the new preconditions (connector running, token present — never

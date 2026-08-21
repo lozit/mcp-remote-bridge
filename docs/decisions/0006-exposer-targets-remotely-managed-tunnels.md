@@ -132,6 +132,30 @@ Therefore:
 ### Neutral
 - The `Exposer` interface is untouched.
 
+## The configuration shape, as measured (2026-08-21)
+
+```json
+"ingress": [
+  {"service": "http://localhost:8080", "hostname": "a.example.com"},
+  {"service": "http://localhost:8081", "hostname": "b.example.com", "originRequest": {}},
+  {"service": "http_status:404"}
+],
+"warp-routing": {"enabled": false}
+```
+
+Three properties the read-modify-write must respect, none of them guessable:
+
+1. **The catch-all is the entry with no `hostname`, and it must stay last.** A rule appended
+   after it is never reached, because it matches everything.
+2. **Entries are not uniform.** `originRequest` is present on one and absent on the other, so
+   only the field being corrected may be touched. Parsing into a typed struct would silently
+   drop what the struct does not know.
+3. **`warp-routing` lives in the same `config` object.** A `PUT` sending only `ingress` erases
+   it.
+
+There is also a `version` counter in the response. Whether it can serve as a compare-and-swap
+token is unknown; until it is, the mitigation stays "read immediately before writing".
+
 ## Notes
 
 - Measured 2026-08-21 on the target machine. Reproduction: `cloudflared tunnel list` with no

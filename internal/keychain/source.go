@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+	"syscall"
 )
 
 // Prefix marks a SecretSource key this implementation can resolve, as written
@@ -120,6 +121,16 @@ func (s *Source) Set(key, value string) error {
 
 	cmd := exec.Command("security", "add-generic-password", "-U", "-s", service, "-a", Account, "-w")
 	cmd.Stdin = strings.NewReader(value + "\n" + value + "\n")
+
+	// Detach from the controlling terminal, or the pipe above is ignored.
+	//
+	// security reads its password from /dev/tty when one is reachable — like ssh
+	// and sudo — and only falls back to stdin when it is not. Measured the hard
+	// way: piping worked from a test harness (no controlling terminal) and then
+	// prompted the user interactively in a real shell, which is the context that
+	// matters. Setsid puts the child in a new session with no controlling
+	// terminal, so /dev/tty cannot be opened and stdin is the only input left.
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
 
 	var out strings.Builder
 	cmd.Stdout = &out
