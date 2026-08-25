@@ -3,20 +3,49 @@
 > **What** — a small Go tool that makes a local **stdio** MCP server reachable from a remote agent, by automating the wrap-in-a-service + expose-through-a-tunnel setup people do today by hand.
 > **For** — anyone running local stdio MCP servers (starting with the users of `mcp-standardnotes`, `mcp-freestyle`, `mcp-nightscout`) who wants a VPS-hosted agent to reach them.
 > **Deployed** — not deployed — a local CLI, distributed as a single binary.
-> **Run** — nothing usable yet; see status below.
+> **Run** — `make build`, then `mcp-remote-bridge apply`. See below.
 
 ## Status
 
-**Skeleton, no behaviour.** The design is specified and the Go module now mirrors it,
-but every operation is still a stub returning `ErrNotImplemented`.
+**Working, unreleased.** The MVP runs end to end against a real tunnel: `apply` publishes a
+local stdio MCP behind a guarded hostname and probes it all the way to an MCP `tools/list`.
 
-- [docs/SPEC-primitive.md](docs/SPEC-primitive.md) fixes the atomic operation — make one
-  stdio MCP reachable — and the three seams (`ServiceManager`, `Exposer`, `SecretSource`)
-  behind which the MVP ships one implementation each.
-- [docs/SPEC-config-cli.md](docs/SPEC-config-cli.md) fixes the config file and the CLI above it.
-- `internal/bridge` declares `Entry`, `HealthReport` and the three seams;
-  `internal/{launchd,cloudflared,keychain}` hold the MVP implementations, currently stubs.
-- Next up is Milestone 1 — see [PLAN.md](PLAN.md) and [docs/ROADMAP.md](docs/ROADMAP.md).
+Not yet released — no signed binaries, no Homebrew tap. Build it yourself for now.
+
+```
+make build                       # compiles and code-signs when a Developer ID is present
+./mcp-remote-bridge doctor       # check the preconditions
+./mcp-remote-bridge setup        # create the Access service token, once
+./mcp-remote-bridge apply        # reconcile the machine to the config
+./mcp-remote-bridge status       # probe everything, change nothing
+```
+
+Also: `remove <name>`, `logs <name>`, `restart <name>`.
+
+Exit codes compose in scripts: `0` all healthy, `1` a precondition failed, `2` at least one
+entry unhealthy. **A green exit means the probes passed, not that a file was written.**
+
+### What it assumes and does not create
+
+- `mcp-proxy` on `PATH`, and `cloudflared` installed **as a service from a tunnel token** (the
+  remotely-managed model — see [ADR 0006](docs/decisions/0006-exposer-targets-remotely-managed-tunnels.md))
+- a Cloudflare API token, scoped to `Zone:DNS:Edit`, `Account:Cloudflare Tunnel:Edit` and Access
+  edit rights, stored with `set-secret`
+- if an MCP Portal fronts your hostnames, its server entries stay manual: that API is closed to
+  tokens while Portals are Beta, and header authentication must be declared **at creation** —
+  it cannot be added afterwards
+
+`doctor` reports all of this, and every failure carries what to do about it.
+
+### What it does for you
+
+- a launchd service that keeps the proxy alive, with per-entry logs
+- the ingress rule and a proxied `CNAME`, inserted without disturbing anything already on the
+  tunnel
+- **a Cloudflare Access application in front of the hostname, created before the hostname is
+  published** — and `apply` refuses an entry proven to answer without authentication, unless the
+  config says `allow_public`
+- secrets resolved at launch, never written to the config, the service file, or a command line
 
 ## Why
 
@@ -42,6 +71,30 @@ Nothing is site-specific: tunnel name, domain, ports and secrets are all inputs.
 **MVP**: macOS (launchd) + Cloudflare Tunnel (`cloudflared`) + macOS keychain.
 Linux (systemd), other tunnels, and Cloudflare Portals registration are wanted and
 deferred — see the spec's Deferred section.
+
+## Configuration
+
+`$XDG_CONFIG_HOME/mcp-remote-bridge/config.toml`, overridable with `--config`. It carries secret
+**references**, never values, so it can live in a dotfiles repo.
+
+```toml
+[infra]
+domain               = "example.com"
+account_id           = "..."
+zone_id              = "..."
+tunnel_id            = "..."                      # a UUID: the API addresses tunnels by id
+api_token            = "keychain:cf-api-token"
+access_policy_id     = "..."                      # an existing policy to guard each hostname
+access_client_id     = "....access"
+access_client_secret = "keychain:cf-access-secret"
+
+[mcp.standardnotes]
+command   = "mcp-standardnotes"
+subdomain = "sn-mcp"                              # -> sn-mcp.example.com
+secrets   = { SN_EMAIL = "keychain:mcp-sn-email" }
+```
+
+See [docs/SPEC-config-cli.md](docs/SPEC-config-cli.md) for every field.
 
 ## Design commitments
 

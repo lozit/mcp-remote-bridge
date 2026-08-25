@@ -114,11 +114,10 @@ seams plus `Entry` / `HealthReport` are declared with stubs returning
       left out. Remaining: wire the Exposer in once the Cloudflare credentials exist.
 - [x] `remove_exposed` verified through a real hostname (2026-08-21): the tunnel configuration
       came back byte-identical, with no Access application, DNS record or launchd service left.
-- [ ] `[supervised]` — *the task **is** the oracle. A loop writing these would author its
-      own grading criteria (writer = maker) and the back pressure disappears. These are the
-      tests to write by hand, or in a reflection session — never in the loop.* Tests for the
-      four secret invariants in `docs/SECURITY.md` (no value in the plist, in `argv`, in a
-      log; absent secret fails at start)
+- [x] Tests for the secret invariants — **done**, written by hand rather than in the loop since
+      the task is its own oracle. Each invariant already had a test in its own package; what was
+      missing is the cross-cutting one that builds **every** artefact and asserts the value
+      appears only in the environment. Mutation-verified by putting the secret back into `argv`.
 - [x] Input validation: split into `loop/backlog.md` as a `[loop]` task, with a red
       acceptance test frozen in `internal/bridge/validate_test.go` (2026-08-20). Reject a
       `name` / `subdomain` containing `/`, `..`, or anything outside a strict charset — they

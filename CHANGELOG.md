@@ -9,6 +9,9 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- A cross-cutting test for the secret path: every artefact the tool produces is built and the
+  secret value must appear in exactly one of them, the process environment. The per-invariant
+  tests can all pass while a *new* artefact leaks — that is the surface this covers.
 - Cobra for the CLI (ADR 0008) — per-command `--help` and shell completion, neither worth
   hand-writing. Behaviour and exit codes are unchanged, and `__launch` is still dispatched before
   Cobra so a usage change cannot break an installed service.

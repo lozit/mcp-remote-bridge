@@ -74,7 +74,11 @@ user's own MCP traffic sends through their own tunnel.
 way to supply it was the exposing way. The safe path is built first, before anything asks
 for a secret.
 
-Four hard invariants:
+Six hard invariants, each with its own test, plus a cross-cutting one
+(`internal/launcher/secrets_invariant_test.go`) that builds **every artefact the tool produces**
+for an entry and asserts the value appears in exactly one of them — the process environment.
+That last test exists because the individual ones can all pass while a **new** artefact leaks:
+the failure mode is not a broken check, it is an unchecked surface.
 
 | Invariant | Enforced where |
 |---|---|
