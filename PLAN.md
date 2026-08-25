@@ -198,8 +198,25 @@ Each gets triaged later → a **decision** (ADR), a **build** (PRD), a **milesto
       (port 8080), which was already guarded — the hostname name is simply misleading.
 - [x] End-to-end confirmed: the server had to be **re-ticked in the Portal's server selection**
       after the delete-and-recreate. `status: ready` described the server, not the service.
-- [ ] `doctor` should flag an entry whose hostname is guarded and whose Portal server is absent
-      from the selection — the state is invisible from every screen except a client's tool call.
+- [~] **`doctor` cannot flag a Portal server missing from the selection — measured, not assumed.**
+      The selection is not exposed by any endpoint the API token can reach: `access/portals` and
+      `access/mcp/servers` both return `404 Unable to authenticate request`, while `access/apps`
+      answers normally with the same token. And the selection is not derivable from the apps
+      either — an app of `type: mcp` carries `{"type":"via_mcp_server_portal","mcp_server_id":…}`
+      as its destination, which says the server *exists*, never that a Portal *selected* it.
+      So the state really is visible only from a client tool call, and a probe would have to be
+      an MCP client authenticated as the Portal's caller. Parked deliberately rather than
+      dropped: it becomes feasible the day the Portal API opens to tokens.
+
+- [ ] `[supervised]` — **decide what to do about the `Policy` policy** (id `bc11074d…`, attached
+      to `mcp-freestyle`). It is the only one of the seven with `decision: allow`; the other six,
+      including every one this tool attaches, use `decision: non_identity` — the "Service Auth"
+      decision, which is what skips the identity flow for a service token. All seven have the
+      same `include: any_valid_service_token`, so the difference is the decision alone. It is a
+      leftover from the incident remediation. Not proven to be the cause of the "That account
+      does not have access." screen seen during that debug, but the shapes match. Per ADR 0001's
+      own doctrine — refuse on proof, warn on ambiguity — this is ambiguity: worth aligning by
+      hand, not worth a refusal in code.
 
 ## Waiting / blocked
 
