@@ -91,6 +91,13 @@ seams plus `Entry` / `HealthReport` are declared with stubs returning
       certainly should NOT: it must stay a fast, side-effect-free read.
 - [x] `[infra]` reshaped: `account_id`, `zone_id`, `tunnel_id`, `api_token` (validated as a
       secret reference), `tunnel` removed.
+- [ ] `[supervised]` — **bound `ProbeHostnameResolves` with an explicit DNS timeout.** It is the
+      only probe in the package not bounded by one (`ProxyDialTimeout`, `MCPProbeTimeout`), so it
+      inherits whatever the system resolver decides — and `health.go` states the house rule: a probe
+      that can hang is a probe that never reports. Shape (`net.Resolver` + `context.WithTimeout`, no
+      new parameter) is mechanical; the *value* is the judgement call, which is why the loop was not
+      allowed to guess it.
+
 - [ ] `[supervised]` — `doctor` checks the preconditions (connector running, token present, never
       tested with a write). The command does not exist yet, and its shape is a design choice.
 - [x] `ensure_exposed` / `remove_exposed` — **done for the local half**: the walking skeleton
