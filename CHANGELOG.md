@@ -9,6 +9,10 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- `RetryCheck` and `ProbeHostnameResolves`, and `apply` now waits for a freshly published
+  hostname before judging whether it is guarded — measured, the edge takes about two minutes,
+  and judging immediately reported "could not confirm" on every new entry. `status` does not
+  wait: it stays a fast read.
 - `apply`, `status` and `remove` — the CLI. Load, loop, report, with the documented exit codes
   (`0` all healthy, `1` a precondition failed, `2` at least one entry unhealthy). The report
   prints only the checks that actually ran.

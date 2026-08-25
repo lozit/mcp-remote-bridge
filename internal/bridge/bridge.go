@@ -1,6 +1,10 @@
 package bridge
 
-import "errors"
+import (
+	"errors"
+	"net/http"
+	"time"
+)
 
 // ErrNotImplemented marks a stub that has not been built yet.
 //
@@ -20,6 +24,16 @@ type Bridge struct {
 	// the shell that created it, so a relative path has nothing to resolve
 	// against.
 	BinaryPath string
+
+	// HTTPClientForTest overrides the client used for hostname probes.
+	//
+	// Only tests set it: it is what lets them exercise a five-minute settle
+	// budget against a local server, in milliseconds.
+	HTTPClientForTest *http.Client
+
+	// Sleep is how the Bridge waits. Nil means time.Sleep; tests inject a
+	// recorder so a five-minute budget costs nothing to exercise.
+	Sleep func(time.Duration)
 
 	// Warn receives messages the caller should see but that do not stop a run —
 	// notably an access policy that could not be confirmed. Nil discards them.

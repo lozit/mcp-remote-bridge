@@ -129,10 +129,7 @@ func (b *Bridge) enforceAccessPolicy(entry Entry) error {
 		return nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), MCPProbeTimeout)
-	defer cancel()
-
-	verdict, why := CheckAccessPolicy(ctx, &http.Client{Timeout: MCPProbeTimeout}, entry.Hostname())
+	verdict, why := b.settleAccessPolicy(entry.Hostname())
 	switch verdict {
 	case PolicyOpen:
 		return fmt.Errorf(
@@ -145,6 +142,52 @@ func (b *Bridge) enforceAccessPolicy(entry Entry) error {
 		b.warnf("could not confirm that %s is guarded: %s", entry.Hostname(), why)
 	}
 	return nil
+}
+
+// settleAccessPolicy waits for a freshly published hostname before judging it.
+//
+// Measured 2026-08-21: a new hostname is not served by the edge for about two
+// minutes after it is published — the TCP connect fails outright, before TLS.
+// Judged immediately, every fresh entry reports "could not confirm that it is
+// guarded", which is true and useless.
+//
+// PolicyUnknown is exactly the retryable verdict: it means "no answer, or an
+// answer that proves nothing". Guarded and Open are both conclusions, so the
+// wait ends as soon as either appears.
+//
+// The wait lives HERE and not in Probe on purpose: `status` must stay a fast,
+// side-effect-free read, and it is `apply` that just changed the world and
+// therefore owes it time to settle.
+func (b *Bridge) settleAccessPolicy(hostname string) (PolicyVerdict, string) {
+	var verdict PolicyVerdict
+	var why string
+
+	probe := func() Check {
+		ctx, cancel := context.WithTimeout(context.Background(), MCPProbeTimeout)
+		defer cancel()
+		verdict, why = CheckAccessPolicy(ctx, b.httpClient(), hostname)
+		return Check{Name: CheckHostnameResponds, Detail: hostname, OK: verdict != PolicyUnknown}
+	}
+
+	RetryCheck(probe, HostnameSettleTimeout, HostnameSettleInterval, b.sleep)
+	return verdict, why
+}
+
+// httpClient is the client used for hostname probes.
+func (b *Bridge) httpClient() *http.Client {
+	if b.HTTPClientForTest != nil {
+		return b.HTTPClientForTest
+	}
+	return &http.Client{Timeout: MCPProbeTimeout}
+}
+
+// sleep is the Bridge's wait, defaulting to the real clock.
+func (b *Bridge) sleep(d time.Duration) {
+	if b.Sleep != nil {
+		b.Sleep(d)
+		return
+	}
+	time.Sleep(d)
 }
 
 // warnf reports something the caller should see but that does not stop the run.

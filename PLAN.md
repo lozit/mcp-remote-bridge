@@ -92,10 +92,10 @@ seams plus `Entry` / `HealthReport` are declared with stubs returning
       configuration exactly — no Access application, DNS record or launchd service left behind.
 - [~] Waiting for a freshly published hostname — split into `loop/backlog.md` as `RetryCheck`,
       with a red acceptance test frozen in `internal/bridge/retry_test.go`.
-- [ ] `[supervised]` — **wire `RetryCheck` into `EnsureExposed`** once it exists: which checks
-      deserve waiting (only `hostname_responds`, or the public ones generally) and whether
-      `status` should wait at all are product choices, not mechanical ones. `status` almost
-      certainly should NOT: it must stay a fast, side-effect-free read.
+- [x] `RetryCheck` wired in — **done**. Only the access-policy verdict waits, and only in
+      `apply`: `status` stays a fast, side-effect-free read. `PolicyUnknown` turned out to be the
+      natural retry condition — it already means "no answer, or an answer that proves nothing",
+      while Guarded and Open are both conclusions that end the wait.
 - [x] `[infra]` reshaped: `account_id`, `zone_id`, `tunnel_id`, `api_token` (validated as a
       secret reference), `tunnel` removed.
 - [ ] `[supervised]` — **bound `ProbeHostnameResolves` with an explicit DNS timeout.** It is the
