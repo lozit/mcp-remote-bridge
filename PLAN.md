@@ -129,6 +129,9 @@ Each gets triaged later → a **decision** (ADR), a **build** (PRD), a **milesto
       worth automating above all others).
 - [ ] `ensure_exposed` creates the Access application on the entry's hostname, **reusing** an
       existing `any_valid_service_token` policy rather than authoring one.
+- [ ] `doctor` detects a Portal MCP server recorded as needing no authentication while its
+      origin is guarded: that combination is a dead end (the field only exists at creation), so
+      the fix is delete-and-recreate and the message must say it outright.
 - [ ] `doctor` reports the Portal's MCP server configuration as an outstanding manual step —
       `/access/mcp_servers` answers `Unable to authenticate request`, so the route exists but is
       closed to API tokens while Portals are Beta. Re-test when the Beta lifts.
@@ -137,14 +140,15 @@ Each gets triaged later → a **decision** (ADR), a **build** (PRD), a **milesto
 
 ## Operational — the maintainer's own infrastructure, not this codebase
 
-- [ ] **Add a Self-hosted Access application on `freestyle-mcp.paranoid.foo`.** Measured
-      2026-08-21: an unauthenticated MCP `initialize` on that hostname returns `200`. The
-      `mcp-freestyle` application in Zero Trust is of type **MCP**, whose destination is a
-      server name inside the Portal (`mcp.paranoid.foo`) — **not** the tunnel hostname. So the
-      Portal path is guarded while the direct tunnel hostname is open, and the dashboard shows
-      "Service token access" next to it, which reads as protected.
-- [ ] Check the same for `mcp-standardnotes`: it is also of type MCP, and the tunnel ingress
-      lists only two hostnames for three declared MCP applications.
+- [x] **`freestyle-mcp.paranoid.foo` is guarded** (2026-08-21). Access application created via
+      the API reusing the existing `any_valid_service_token` policy, service token created with
+      its secret going straight to the keychain, and the Portal server recreated declaring
+      header-based authentication. Verified by measurement: `403` + `cf-access-aud`, the same
+      signature as `hermes-mcp`.
+- [x] `mcp-standardnotes` checked: **not affected**. It is served by `hermes-mcp.paranoid.foo`
+      (port 8080), which was already guarded — the hostname name is simply misleading.
+- [ ] Confirm an end-to-end tool call through the Portal (`get_current_glucose`): `status: ready`
+      proves discovery succeeded, not that a call is served.
 
 ## Waiting / blocked
 

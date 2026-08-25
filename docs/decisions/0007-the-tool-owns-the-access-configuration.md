@@ -59,6 +59,14 @@ satisfy first:
   API tokens. `doctor` reports it as an outstanding step rather than the tool pretending it is
   done.
 
+**Order matters, and it is not the intuitive one.** Verified end to end on 2026-08-21: the Access
+application must exist on the hostname **before** the Portal server is created, because a Portal
+server created against an unauthenticated origin records that it needs no authentication and
+**cannot acquire one afterwards** — the field only exists in the creation form, `Sync
+capabilities` fails with the very `403` you are trying to fix, and the only way out is deleting a
+live resource to recreate it. Whatever the tool automates, it must create in that order, and
+`doctor` must say so when it finds a Portal server in the wrong state.
+
 This makes ADR 0001's refusal coherent: the tool refuses an open hostname because it can now
 close it, not instead of closing it.
 

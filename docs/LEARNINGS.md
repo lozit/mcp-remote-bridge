@@ -12,6 +12,37 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Declare authentication when creating a resource — some systems will not let you add it later
+
+**Why**: a Cloudflare MCP Portal server created against an unauthenticated origin records *"this
+server does not require authentication"*, and that state has **no way back**. Guarding the origin
+afterwards produces a deadlock:
+
+- the authentication field never appears, because the server is recorded as needing none — the
+  edit screen only offers *Update headers* on a server that already has them;
+- `Sync capabilities` fails with `failed to get information`, because the origin now answers
+  `403` — it fails for exactly the reason you are trying to fix;
+- the server goes to `Error` and stays there.
+
+The only way out was to **delete a running resource and recreate it**, declaring header-based
+authentication in the creation form. On a server carrying live traffic, with a client secret that
+Cloudflare shows once, in the middle of a form.
+
+Working backwards, the correct order was: create the Access application on the hostname
+**first**, then create the Portal server declaring authentication from the start. Nothing in the
+UI suggests that order, and the reference guide walks the other way.
+
+**When to apply**: before creating any resource that talks to a protected origin — a webhook, a
+scraper, an API integration, a monitoring probe. Ask whether authentication can be **added
+later** or only **declared at creation**. If the system infers it from a probe of the target, it
+has recorded a fact about the past that it may never re-check.
+
+Two corollaries worth stealing:
+- **A "sync" or "refresh" button is not a way out**: it re-probes with the credentials it has,
+  which is precisely what is missing. It fails hardest exactly when you need it most.
+- Any resource whose creation form has more fields than its edit form is a resource whose
+  creation order matters. Read both screens before creating the first one.
+
 ## The cost of a manual procedure is its confusion, not its length
 
 **Why**: this project was founded on replacing a 489-line guide — length as the measure of the
