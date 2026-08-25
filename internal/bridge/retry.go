@@ -24,7 +24,19 @@ const HostnameSettleInterval = 10 * time.Second
 // probe is called at least once, even with a timeout of zero — a wait that
 // never probes would report on nothing.
 func RetryCheck(probe func() Check, timeout, interval time.Duration, sleep func(time.Duration)) Check {
-	// STUB — the loop's maker replaces this body. Probing once and returning is
-	// what retry_test.go proves insufficient.
-	return probe()
+	var waited time.Duration
+
+	for {
+		check := probe()
+		if check.OK {
+			return check
+		}
+		// A non-positive interval would advance the budget by nothing and spin
+		// forever, so it means "no waiting" rather than "wait indefinitely".
+		if interval <= 0 || waited+interval > timeout {
+			return check
+		}
+		sleep(interval)
+		waited += interval
+	}
 }

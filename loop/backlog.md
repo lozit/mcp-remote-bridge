@@ -63,7 +63,7 @@ A task the loop can't verify its way out of, or that hides a decision, will be p
       touch `bridge.ServiceSpec`, `KeepAlivePolicy`, or any file outside
       `internal/launchd/plist.go`.
 
-- [ ] **Implement `RetryCheck` in `internal/bridge/retry.go`.**
+- [x] **Implement `RetryCheck` in `internal/bridge/retry.go`.**
       Acceptance test: `go test ./internal/bridge/ -run TestRetryCheck` → exit 0 = green.
       Behaviour: call `probe`, and while it returns a failing `Check`, sleep for `interval` via
       the injected `sleep` function and call it again, until it passes or the accumulated wait
