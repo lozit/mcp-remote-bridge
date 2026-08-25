@@ -149,6 +149,11 @@ Each gets triaged later → a **decision** (ADR), a **build** (PRD), a **milesto
       the symptom in code is a **network timeout**, not a message. Approved, the same call took 6s.
       `RequestTimeout` stays at 90s — it exists to stop a hang, not to enforce a latency budget.
 
+- [ ] `[supervised]` — **sign the binary with a stable identity**. Unsigned, macOS re-prompts for
+      keychain access on every rebuild (and would on every user update), and the symptom in code
+      is a network timeout rather than an error. Needs a self-signed code-signing certificate and
+      a `codesign` step in the build; an ad-hoc signature will not do, being content-derived.
+
 ## Operational — the maintainer's own infrastructure, not this codebase
 
 - [ ] **Delete the duplicate service token** `75f79582b4962feb23f68f3856561216.access`. Two tokens

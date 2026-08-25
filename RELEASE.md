@@ -63,6 +63,14 @@ matrix) and whether there is a Homebrew tap at all for the first release. → AD
 - **macOS Gatekeeper** — an unsigned downloaded binary is quarantined and refused. Decide
   before v0.1 whether to notarize or to document the `xattr -d com.apple.quarantine`
   workaround. Homebrew installs sidestep this; direct downloads do not.
+- **Code signing is not only about Gatekeeper: it is about the keychain prompt.** macOS grants
+  keychain access to a binary by IDENTITY, and an unsigned binary's identity changes with its
+  contents. So an unsigned release makes every user re-authorise access on **every update**, not
+  once — the tool reads a secret on every `apply`. Observed in development, where each rebuild
+  triggers a fresh prompt, and where the symptom in code is a **network timeout** rather than an
+  error, because the call blocks on a dialog the process cannot see.
+  Signing with a stable identity fixes it; an ad-hoc signature does not, since it is derived from
+  the contents.
 
 ## Rollback
 
