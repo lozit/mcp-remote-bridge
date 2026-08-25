@@ -19,3 +19,9 @@
   out a real launchd job and races its re-registration (a failing run takes ~30s against ~2.5s for a
   green one). Measured 1/20 at clean HEAD and 1/8 with an unrelated diff. Do not chase it as a
   regression: confirm with `-count=10` on a stashed tree first.
+- A negative DNS assertion can be green for the wrong reason. `TestProbeHostnameResolvesFailsForANameThatDoesNot`
+  passes just as happily when the resolver is unreachable as when `.invalid` genuinely NXDOMAINs — the
+  probe would look correct on a machine where *nothing* resolves. What proved it was a control lookup
+  out of test: `example.com`, `one.one.one.one` and `dns.google` all `OK=true` in the same run, and the
+  `.invalid` error unwrapping to a `*net.DNSError` with `IsNotFound=true`. Pair every "must fail" fixture
+  with a "must succeed" control against the same dependency.

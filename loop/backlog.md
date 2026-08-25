@@ -77,7 +77,7 @@ A task the loop can't verify its way out of, or that hides a decision, will be p
       change `Check`, `HealthReport`, or wire this into `EnsureExposed` yet — that is a separate,
       supervised step; do not touch any file other than `retry.go`.
 
-- [ ] **Implement `ProbeHostnameResolves` in `internal/bridge/resolve.go`.**
+- [x] **Implement `ProbeHostnameResolves` in `internal/bridge/resolve.go`.**
       Acceptance test: `go test ./internal/bridge/ -run TestProbeHostnameResolves` → exit 0 =
       green.
       Behaviour: look `hostname` up in DNS with the standard library. Return a `Check` with
