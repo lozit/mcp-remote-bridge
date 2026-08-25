@@ -31,6 +31,9 @@ const (
 const launchCommand = "__launch"
 
 func main() {
+	// __launch is dispatched before Cobra, and deliberately so: launchd execs it,
+	// its arguments are its own, and it must not inherit anything Cobra decides —
+	// a usage change must never break a service that is already installed.
 	if len(os.Args) > 1 && os.Args[1] == launchCommand {
 		if err := runLaunch(os.Args[2:]); err != nil {
 			fmt.Fprintf(os.Stderr, "mcp-remote-bridge %s: %v\n", launchCommand, err)
@@ -39,59 +42,20 @@ func main() {
 		return
 	}
 
-	if len(os.Args) < 2 {
-		usage()
-		os.Exit(exitPrecondition)
-	}
+	exitCode := exitOK
+	root := newRootCommand(&exitCode)
 
-	command, args := os.Args[1], os.Args[2:]
-
-	if command == "set-secret" {
-		if err := runSetSecret(args); err != nil {
-			fmt.Fprintf(os.Stderr, "mcp-remote-bridge set-secret: %v\n", err)
-			os.Exit(exitPrecondition)
+	if err := root.Execute(); err != nil {
+		fmt.Fprintf(os.Stderr, "mcp-remote-bridge: %v\n", err)
+		// Keep the documented codes: a precondition failure is 1, whatever Cobra
+		// would otherwise return.
+		if exitCode == exitOK {
+			exitCode = exitPrecondition
 		}
-		return
 	}
-
-	var (
-		code int
-		err  error
-	)
-	switch command {
-	case "apply":
-		code, err = runApply(args)
-	case "status":
-		code, err = runStatus(args)
-	case "remove":
-		code, err = runRemove(args)
-	case "doctor":
-		code, err = runDoctor(args)
-	case "setup":
-		code, err = runSetup(args)
-	case "logs":
-		code, err = runLogs(args)
-	case "restart":
-		code, err = runRestart(args)
-	case "-h", "--help", "help":
-		usage()
-		return
-	default:
-		fmt.Fprintf(os.Stderr, "unknown command %q\n\n", command)
-		usage()
-		os.Exit(exitPrecondition)
-	}
-
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "mcp-remote-bridge %s: %v\n", command, err)
-	}
-	os.Exit(code)
+	os.Exit(exitCode)
 }
 
-// runLaunch resolves one entry's secrets and execs the proxy. On success it
-// does not return: this process becomes mcp-proxy.
-//
-// Usage: __launch <name> --config <path> --port <n> [--proxy <path>]
 func runLaunch(args []string) error {
 	var name, configPath, proxyPath string
 	port := 0
@@ -245,24 +209,4 @@ func stty(mode string) error {
 		return fmt.Errorf("setting terminal echo %s: %w", mode, err)
 	}
 	return nil
-}
-
-func usage() {
-	fmt.Fprint(os.Stderr, `mcp-remote-bridge — make local stdio MCP servers reachable from a remote agent
-
-  apply [name]        reconcile the machine to the config (idempotent)
-  status [name]       probe every entry and change nothing
-  remove <name>       tear one entry down; never implicit
-  logs <name>         show the tail of that entry's proxy log
-  restart <name>      bounce that entry's service; leaves the hostname alone
-  doctor              check the preconditions; changes nothing
-  setup               create the Access service token, once
-  set-secret <ref>    store a secret from a masked prompt
-
-Options:
-  --config <path>     defaults to $XDG_CONFIG_HOME/mcp-remote-bridge/config.toml
-
-Exit codes: 0 all healthy · 1 a precondition failed · 2 at least one entry unhealthy.
-A green exit means the probes passed, not that a file was written.
-`)
 }

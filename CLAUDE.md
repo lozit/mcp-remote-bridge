@@ -105,8 +105,9 @@ maintainer will read. This holds whatever language the surrounding conversation 
 ### Code
 
 **Go 1.24** — distributed as a single static binary (`brew`, download-and-run, no runtime).
-Stdlib-first (one dependency, argued in ADR 0005); [Cobra](https://github.com/spf13/cobra) for command structure, TOML for the
-config file.
+Stdlib-first, with two dependencies each argued in an ADR: TOML
+([ADR 0005](docs/decisions/0005-toml-library-and-dependency-policy.md)) and Cobra
+([ADR 0008](docs/decisions/0008-cobra-for-the-cli.md)).
 
 - The primitive talks **only to interfaces** (`ServiceManager`, `Exposer`, `SecretSource`).
   Shelling out to `launchctl`, `cloudflared`, or `security` happens **inside an

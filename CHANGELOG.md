@@ -9,6 +9,9 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Cobra for the CLI (ADR 0008) — per-command `--help` and shell completion, neither worth
+  hand-writing. Behaviour and exit codes are unchanged, and `__launch` is still dispatched before
+  Cobra so a usage change cannot break an installed service.
 - `logs <name>` and `restart <name>`. `restart` bounces the service only — the hostname, ingress
   rule and DNS record are untouched, so it never risks the published name. `logs` always prints
   the path, since "nothing to show" and "wrong place" are different problems.

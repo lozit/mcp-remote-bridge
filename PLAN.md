@@ -143,9 +143,9 @@ Each gets triaged later → a **decision** (ADR), a **build** (PRD), a **milesto
       ingress was untouched. `restart` reuses the ServiceManager's Remove + Ensure rather than a
       new seam method — restarting is not a new capability, and adding to the three interfaces
       needs an ADR that nothing here earns.
-- [ ] `[supervised]` — **Cobra**, per `SPEC-config-cli.md`. Seven commands are now hand-parsed;
-      that is the point where the ergonomics (`--help` per command, shell completion) start to
-      outweigh a second dependency. Needs its own ADR — ADR 0005 explicitly does not pre-approve it.
+- [x] Cobra adopted ([ADR 0008](docs/decisions/0008-cobra-for-the-cli.md)) — for completion and
+      per-command help, explicitly NOT for the ~50 lines of parsing it replaces, which would not
+      have justified tripling the module count. Exit codes verified unchanged.
 
 ## Next — ADR 0007, the tool owns the Access configuration
 
