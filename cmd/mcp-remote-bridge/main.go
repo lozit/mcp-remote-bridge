@@ -67,6 +67,8 @@ func main() {
 		code, err = runRemove(args)
 	case "doctor":
 		code, err = runDoctor(args)
+	case "setup":
+		code, err = runSetup(args)
 	case "-h", "--help", "help":
 		usage()
 		return
@@ -248,6 +250,7 @@ func usage() {
   status [name]       probe every entry and change nothing
   remove <name>       tear one entry down; never implicit
   doctor              check the preconditions; changes nothing
+  setup               create the Access service token, once
   set-secret <ref>    store a secret from a masked prompt
 
 Options:

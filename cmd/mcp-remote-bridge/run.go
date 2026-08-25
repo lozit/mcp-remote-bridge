@@ -10,6 +10,7 @@ import (
 	"github.com/lozit/mcp-remote-bridge/internal/cloudflared"
 	"github.com/lozit/mcp-remote-bridge/internal/config"
 	"github.com/lozit/mcp-remote-bridge/internal/doctor"
+
 	"github.com/lozit/mcp-remote-bridge/internal/keychain"
 	"github.com/lozit/mcp-remote-bridge/internal/launchd"
 )
@@ -249,5 +250,78 @@ func runDoctor(args []string) (int, error) {
 	if cfg != nil {
 		fmt.Printf("\n  preconditions met; config at %s\n", path)
 	}
+	return exitOK, nil
+}
+
+// AccessSecretRef is where setup stores the service token's secret.
+const AccessSecretRef = "keychain:cf-access-secret"
+
+// serviceTokenName is the name setup gives the token it creates.
+const serviceTokenName = "mcp-remote-bridge"
+
+// runSetup creates the Access service token, once.
+//
+// It is a separate command rather than part of apply because the token is
+// SHARED across entries: creating it per-entry would produce one token per MCP,
+// each one a credential to track and revoke.
+//
+// It is also not part of doctor, which must stay a read-only diagnostic.
+func runSetup(args []string) (int, error) {
+	_, configPath, err := parseEntryArgs("setup", args)
+	if err != nil {
+		return exitPrecondition, err
+	}
+	cfg, _, err := loadConfig(configPath)
+	if err != nil {
+		return exitPrecondition, err
+	}
+
+	secrets := keychain.New(cfg.Infra.Keychain)
+	apiToken, err := secrets.Get(cfg.Infra.APIToken)
+	if err != nil {
+		return exitPrecondition, fmt.Errorf("resolving the Cloudflare API token: %w", err)
+	}
+	exposer := cloudflared.New(cfg.Infra.AccountID, cfg.Infra.ZoneID, cfg.Infra.TunnelID, apiToken)
+
+	// Already set up? Say so and change nothing. Re-running must be safe: this
+	// command creates a credential, and the failure mode of a careless retry is
+	// a second indistinguishable token.
+	existing, err := exposer.FindServiceToken(serviceTokenName)
+	if err != nil {
+		return exitPrecondition, err
+	}
+	if existing != nil {
+		if stored, err := secrets.Get(AccessSecretRef); err == nil && stored != "" {
+			fmt.Printf("ok   service token %q already exists and its secret is stored\n", serviceTokenName)
+			fmt.Printf("     access_client_id     = %q\n", existing.ClientID)
+			fmt.Printf("     access_client_secret = %q\n", AccessSecretRef)
+			return exitOK, nil
+		}
+		// The token exists but we cannot read its secret — Cloudflare shows it
+		// once. Guessing would strand the user; say exactly what to do.
+		return exitPrecondition, fmt.Errorf(
+			"a service token named %q exists (client id %s) but its secret is not in the keychain.\n"+
+				"Cloudflare shows a secret only at creation, so it cannot be recovered.\n"+
+				"Either store it with `set-secret %s` if you kept it, or delete the token in the dashboard and re-run setup",
+			serviceTokenName, existing.ClientID, AccessSecretRef)
+	}
+
+	token, err := exposer.CreateServiceToken(serviceTokenName)
+	if err != nil {
+		return exitPrecondition, err
+	}
+	// Straight from the response into the keychain: the value never reaches the
+	// terminal, an argv, or a clipboard.
+	if err := secrets.Set(AccessSecretRef, token.Secret); err != nil {
+		return exitPrecondition, fmt.Errorf(
+			"the service token was created (client id %s) but its secret could not be stored: %w.\n"+
+				"The secret is now unrecoverable — delete the token in the dashboard and re-run setup",
+			token.ClientID, err)
+	}
+
+	fmt.Printf("ok   created service token %q; its secret is in the keychain\n\n", serviceTokenName)
+	fmt.Printf("     Add to [infra] in your config:\n")
+	fmt.Printf("       access_client_id     = %q\n", token.ClientID)
+	fmt.Printf("       access_client_secret = %q\n", AccessSecretRef)
 	return exitOK, nil
 }

@@ -141,10 +141,14 @@ Each gets triaged later → a **decision** (ADR), a **build** (PRD), a **milesto
 
 ## Next — ADR 0007, the tool owns the Access configuration
 
-- [ ] A `setup` or `doctor --fix` path that creates the service token once, storing its secret
-      through the `SecretSource`. Deliberately NOT in `ensure_exposed`: the token is shared across
-      entries, so creating it per-entry would make one token per MCP. The API returns the secret
-      at creation, which is what makes this worth automating at all.
+- [x] `setup` — **done**. Creates the Access service token once and puts its secret straight into
+      the keychain, never through a terminal or a clipboard. Idempotent, and honest about the one
+      state it cannot repair: a token that exists whose secret is not stored cannot be recovered,
+      so it says to delete and re-run rather than creating a second indistinguishable credential.
+- [ ] `[supervised]` — **API latency**: every Cloudflare call took ~30s from a Go binary in the
+      agent's sandbox while curl answered in 1s. `RequestTimeout` raised to 90s so the timeout
+      stops a hang rather than enforcing a latency budget. Confirm on a real terminal whether the
+      latency is environmental before investigating further.
 - [x] The Exposer creates the Access application on the hostname, reusing the policy named by
       `[infra] access_policy_id`. Guards **before** publishing and unguards **last** — both
       orderings mutation-tested, since they are the security property, not the API calls.

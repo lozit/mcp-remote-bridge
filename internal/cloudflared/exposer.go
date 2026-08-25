@@ -24,7 +24,12 @@ import (
 const DefaultBaseURL = "https://api.cloudflare.com/client/v4"
 
 // RequestTimeout bounds a single API call.
-const RequestTimeout = 30 * time.Second
+//
+// Generous on purpose: the same call that curl completes in a second has been
+// observed taking upwards of thirty from a Go binary in a sandboxed
+// environment. The timeout exists to stop a hang, not to enforce a latency
+// budget, so it is set well above any plausible healthy response.
+const RequestTimeout = 90 * time.Second
 
 // Exposer routes a public hostname to a local port through a Cloudflare tunnel.
 type Exposer struct {
