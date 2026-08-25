@@ -124,11 +124,13 @@ Each gets triaged later → a **decision** (ADR), a **build** (PRD), a **milesto
 
 ## Next — ADR 0007, the tool owns the Access configuration
 
-- [ ] `ensure_exposed` creates/reuses a service token, storing its secret through the
-      `SecretSource` (the API returns it; the dashboard shows it once, which is why this step is
-      worth automating above all others).
-- [ ] `ensure_exposed` creates the Access application on the entry's hostname, **reusing** an
-      existing `any_valid_service_token` policy rather than authoring one.
+- [ ] A `setup` or `doctor --fix` path that creates the service token once, storing its secret
+      through the `SecretSource`. Deliberately NOT in `ensure_exposed`: the token is shared across
+      entries, so creating it per-entry would make one token per MCP. The API returns the secret
+      at creation, which is what makes this worth automating at all.
+- [x] The Exposer creates the Access application on the hostname, reusing the policy named by
+      `[infra] access_policy_id`. Guards **before** publishing and unguards **last** — both
+      orderings mutation-tested, since they are the security property, not the API calls.
 - [ ] `doctor` detects a Portal MCP server recorded as needing no authentication while its
       origin is guarded: that combination is a dead end (the field only exists at creation), so
       the fix is delete-and-recreate and the message must say it outright.

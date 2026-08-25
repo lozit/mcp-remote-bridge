@@ -9,6 +9,10 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- `[infra] access_policy_id` — the Exposer now puts a Cloudflare Access application in front of
+  each hostname it publishes, attaching an **existing** policy rather than authoring one
+  (ADR 0007). It guards before publishing and unguards last, so a hostname is never reachable
+  while unguarded.
 - ADR 0007 — the tool takes ownership of the Access configuration it publishes: service token and
   Access application, so that ADR 0001's refusal becomes coherent (it refuses an open hostname
   because it can close it, not instead of closing it). The Portal's own MCP server configuration

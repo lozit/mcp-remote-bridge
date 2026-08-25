@@ -53,6 +53,15 @@ type Infra struct {
 	AccessClientID     string `toml:"access_client_id"`
 	AccessClientSecret string `toml:"access_client_secret"`
 
+	// AccessPolicyID names an existing Access policy to attach to the
+	// applications this tool creates in front of its hostnames (ADR 0007).
+	//
+	// An existing policy is reused rather than authored: the account already has
+	// one that works, and a policy invented here could lock out a working MCP.
+	// Empty means the tool publishes hostnames without guarding them — which the
+	// access-policy check will then refuse, per ADR 0001.
+	AccessPolicyID string `toml:"access_policy_id"`
+
 	// Keychain optionally names a specific keychain file to resolve secrets
 	// from. Empty means the user's default search list.
 	//
@@ -262,6 +271,7 @@ func (f *File) Entries() []bridge.Entry {
 
 			AccessClientID:     f.Infra.AccessClientID,
 			AccessClientSecret: f.Infra.AccessClientSecret,
+			AccessPolicyID:     f.Infra.AccessPolicyID,
 		})
 	}
 	return out

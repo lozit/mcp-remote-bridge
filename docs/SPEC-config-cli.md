@@ -31,6 +31,11 @@ api_token  = "keychain:cf-api-token"     # a reference, never a value (rule 3)
 # a half-configured token is sent, rejected, and reads as "the MCP is down".
 # access_client_id     = "abc123.access"                  # an identifier, not a secret
 # access_client_secret = "keychain:cf-access-secret"      # a reference
+# access_policy_id     = "fb35852a-..."                   # an EXISTING policy to put in front
+#   of each hostname this tool publishes (ADR 0007). An existing one is reused rather than
+#   authored: the account already has policies that work, and one invented here could lock out
+#   a working MCP. Omitted, hostnames are published unguarded — which the access-policy check
+#   then refuses, per ADR 0001.
 # keychain = "~/Library/Keychains/mcp.keychain-db"   # optional: a dedicated keychain,
 #   lockable independently of the login keychain, so an unlocked session exposes less
 

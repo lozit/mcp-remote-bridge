@@ -32,10 +32,19 @@ type Exposer struct {
 	ZoneID    string
 	TunnelID  string
 
-	// APIToken is the resolved token value. It can modify the zone's DNS, so it
-	// is never logged and never placed in a URL or a command line — only in an
+	// APIToken is the resolved token value. It can modify the zone's DNS and,
+	// since ADR 0007, decide who may reach these applications. It is never
+	// logged and never placed in a URL or a command line — only in an
 	// Authorization header.
 	APIToken string
+
+	// AccessPolicyID, when set, makes Ensure guard the hostname with a
+	// Cloudflare Access application carrying that existing policy (ADR 0007).
+	//
+	// Empty means the hostname is published unguarded — which the access-policy
+	// check then refuses, per ADR 0001. That combination is deliberate: the tool
+	// publishes nothing it cannot guard, unless the entry says allow_public.
+	AccessPolicyID string
 
 	// BaseURL defaults to DefaultBaseURL. Tests point it at a local server.
 	BaseURL string
@@ -49,6 +58,90 @@ func New(accountID, zoneID, tunnelID, apiToken string) *Exposer {
 	return &Exposer{AccountID: accountID, ZoneID: zoneID, TunnelID: tunnelID, APIToken: apiToken}
 }
 
+// accessAppName is the application name this tool gives a hostname it guards.
+//
+// Derived from the hostname so the application is recognisably ours and so a
+// second Ensure finds it instead of creating a duplicate.
+func accessAppName(hostname string) string { return hostname }
+
+type accessApp struct {
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	Type   string `json:"type"`
+	Domain string `json:"domain"`
+}
+
+// findAccessApp returns the application guarding hostname, or nil.
+func (e *Exposer) findAccessApp(hostname string) (*accessApp, error) {
+	var got struct {
+		Result []accessApp `json:"result"`
+	}
+	if err := e.call(http.MethodGet, "/accounts/"+e.AccountID+"/access/apps", nil, &got); err != nil {
+		return nil, fmt.Errorf("listing Access applications: %w", err)
+	}
+	for i := range got.Result {
+		if got.Result[i].Domain == hostname {
+			return &got.Result[i], nil
+		}
+	}
+	return nil, nil
+}
+
+// ensureAccessApp puts a Cloudflare Access application in front of hostname.
+//
+// It attaches an EXISTING policy rather than authoring one. The account already
+// has policies that work; inventing one here could lock out a working MCP, and
+// the tool is now able to break access, not merely to fail creating it.
+//
+// Idempotent: an application already guarding the hostname is left alone.
+func (e *Exposer) ensureAccessApp(hostname string) error {
+	if e.AccessPolicyID == "" {
+		return nil // nothing asked for; ADR 0001's check will refuse an open hostname
+	}
+	existing, err := e.findAccessApp(hostname)
+	if err != nil {
+		return err
+	}
+	if existing != nil {
+		return nil
+	}
+
+	body := map[string]any{
+		"name":             accessAppName(hostname),
+		"type":             "self_hosted",
+		"domain":           hostname,
+		"session_duration": "24h",
+		"policies":         []string{e.AccessPolicyID},
+	}
+	if err := e.call(http.MethodPost, "/accounts/"+e.AccountID+"/access/apps", body, nil); err != nil {
+		return fmt.Errorf("creating the Access application for %s: %w", hostname, err)
+	}
+	return nil
+}
+
+// removeAccessApp deletes the application guarding hostname.
+//
+// It refuses anything that is not a self_hosted application on exactly this
+// hostname: an application of another type was created by something else — the
+// Portal generates its own — and deleting it would break what we did not build.
+func (e *Exposer) removeAccessApp(hostname string) error {
+	existing, err := e.findAccessApp(hostname)
+	if err != nil {
+		return err
+	}
+	if existing == nil {
+		return nil // already the desired state
+	}
+	if existing.Type != "self_hosted" {
+		return fmt.Errorf("refusing to delete the Access application for %s: it is of type %q, not one this tool creates",
+			hostname, existing.Type)
+	}
+	if err := e.call(http.MethodDelete, "/accounts/"+e.AccountID+"/access/apps/"+existing.ID, nil, nil); err != nil {
+		return fmt.Errorf("deleting the Access application for %s: %w", hostname, err)
+	}
+	return nil
+}
+
 // Ensure adds the ingress entry and the DNS record for subdomain.domain.
 //
 // Idempotent: an entry that is already correct is left alone, and one that
@@ -57,6 +150,13 @@ func (e *Exposer) Ensure(subdomain, domain string, localPort int) error {
 	hostname := subdomain + "." + domain
 	service := fmt.Sprintf("http://localhost:%d", localPort)
 
+	// Guard first, publish second. ADR 0007: a hostname that resolves before it
+	// is guarded is open for however long the gap lasts, and DNS propagation
+	// makes that gap unpredictable. Creating the Access application first costs
+	// nothing when it is already there.
+	if err := e.ensureAccessApp(hostname); err != nil {
+		return err
+	}
 	if err := e.updateIngress(func(ingress []map[string]any) ([]map[string]any, bool) {
 		return upsertIngress(ingress, hostname, service)
 	}); err != nil {
@@ -76,7 +176,12 @@ func (e *Exposer) Remove(subdomain, domain string) error {
 	}); err != nil {
 		return err
 	}
-	return e.removeDNS(hostname)
+	if err := e.removeDNS(hostname); err != nil {
+		return err
+	}
+	// The guard goes last, mirroring Ensure: nothing is ever unguarded while it
+	// is still reachable.
+	return e.removeAccessApp(hostname)
 }
 
 // upsertIngress places hostname -> service before the catch-all, preserving

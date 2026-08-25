@@ -31,10 +31,13 @@ const realConfig = `{
 }`
 
 type capture struct {
-	puts     []map[string]any
-	posts    []map[string]any
-	deletes  []string
-	dnsEmpty bool
+	puts          []map[string]any
+	posts         []map[string]any
+	deletes       []string
+	accessApps    []map[string]any
+	accessDeletes []string
+	order         []string
+	dnsEmpty      bool
 }
 
 // newAPI stands in for the Cloudflare API. It answers the two GETs the Exposer
@@ -49,6 +52,17 @@ func newAPI(t *testing.T, c *capture) *httptest.Server {
 			t.Errorf("the token leaked into the URL: %s", r.URL)
 		}
 		w.Header().Set("Content-Type", "application/json")
+
+		if r.Method != http.MethodGet {
+			switch {
+			case strings.Contains(r.URL.Path, "/access/apps"):
+				c.order = append(c.order, "access:"+r.Method)
+			case strings.Contains(r.URL.Path, "/configurations"):
+				c.order = append(c.order, "ingress:"+r.Method)
+			case strings.Contains(r.URL.Path, "/dns_records"):
+				c.order = append(c.order, "dns:"+r.Method)
+			}
+		}
 
 		switch {
 		case strings.Contains(r.URL.Path, "/configurations") && r.Method == http.MethodGet:
@@ -73,6 +87,22 @@ func newAPI(t *testing.T, c *capture) *httptest.Server {
 			var body map[string]any
 			_ = json.NewDecoder(r.Body).Decode(&body)
 			c.posts = append(c.posts, body)
+			_, _ = w.Write([]byte(`{"success":true,"errors":[]}`))
+
+		case strings.Contains(r.URL.Path, "/access/apps") && r.Method == http.MethodGet:
+			// Le compte porte deja l'application du Portal, d'un autre type.
+			_, _ = w.Write([]byte(`{"success":true,"errors":[],"result":[
+				{"id":"app-portal","name":"mcp-freestyle","type":"mcp","domain":""},
+				{"id":"app-hermes","name":"hermes","type":"self_hosted","domain":"hermes-mcp.paranoid.foo"}]}`))
+
+		case strings.Contains(r.URL.Path, "/access/apps") && r.Method == http.MethodPost:
+			var body map[string]any
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			c.accessApps = append(c.accessApps, body)
+			_, _ = w.Write([]byte(`{"success":true,"errors":[]}`))
+
+		case strings.Contains(r.URL.Path, "/access/apps") && r.Method == http.MethodDelete:
+			c.accessDeletes = append(c.accessDeletes, r.URL.Path)
 			_, _ = w.Write([]byte(`{"success":true,"errors":[]}`))
 
 		case strings.Contains(r.URL.Path, "/dns_records") && r.Method == http.MethodDelete:
@@ -334,5 +364,128 @@ func TestTokenTravelsOnlyInTheHeader(t *testing.T) {
 	e := newExposer(t, c) // the handler asserts this on every request
 	if err := e.Ensure("skeleton", "paranoid.foo", 29777); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// --- ADR 0007 : le hostname publie est garde ---
+
+func guardingExposer(t *testing.T, c *capture) *Exposer {
+	t.Helper()
+	e := newExposer(t, c)
+	e.AccessPolicyID = "policy-abc"
+	return e
+}
+
+// L'ordre est la propriete de securite : un hostname qui resout avant d'etre
+// garde est ouvert pendant tout l'intervalle, et la propagation DNS rend cet
+// intervalle imprevisible.
+func TestEnsureGuardsBeforePublishing(t *testing.T) {
+	c := &capture{dnsEmpty: true}
+	e := guardingExposer(t, c)
+
+	if err := e.Ensure("skeleton", "paranoid.foo", 29777); err != nil {
+		t.Fatalf("Ensure: %v", err)
+	}
+	if len(c.accessApps) != 1 {
+		t.Fatalf("aucune application Access creee: %v", c.accessApps)
+	}
+	if len(c.order) < 2 || c.order[0] != "access:POST" {
+		t.Errorf("le hostname a ete publie avant d'etre garde: %v", c.order)
+	}
+
+	app := c.accessApps[0]
+	if app["type"] != "self_hosted" {
+		t.Errorf("type = %v, want self_hosted", app["type"])
+	}
+	if app["domain"] != "skeleton.paranoid.foo" {
+		t.Errorf("domain = %v", app["domain"])
+	}
+	// Reutiliser une policy existante, jamais en ecrire une : le compte en a
+	// deja qui fonctionnent, et une policy inventee ici peut verrouiller un MCP.
+	pol, ok := app["policies"].([]any)
+	if !ok || len(pol) != 1 || pol[0] != "policy-abc" {
+		t.Errorf("policies = %v, want exactement la policy existante", app["policies"])
+	}
+}
+
+// Sans policy configuree, le comportement reste celui d'avant : on publie, et
+// le controle de l'ADR 0001 refusera un hostname ouvert.
+func TestEnsureWithoutAPolicyCreatesNoApplication(t *testing.T) {
+	c := &capture{dnsEmpty: true}
+	e := newExposer(t, c) // AccessPolicyID vide
+
+	if err := e.Ensure("skeleton", "paranoid.foo", 29777); err != nil {
+		t.Fatal(err)
+	}
+	if len(c.accessApps) != 0 {
+		t.Errorf("une application a ete creee sans policy demandee: %v", c.accessApps)
+	}
+}
+
+// Rule 1 : une application deja en place n'est pas dupliquee.
+func TestEnsureDoesNotDuplicateAnExistingApplication(t *testing.T) {
+	c := &capture{dnsEmpty: true}
+	e := guardingExposer(t, c)
+
+	// hermes-mcp.paranoid.foo est deja garde dans la fixture.
+	if err := e.Ensure("hermes-mcp", "paranoid.foo", 8080); err != nil {
+		t.Fatal(err)
+	}
+	if len(c.accessApps) != 0 {
+		t.Errorf("une seconde application a ete creee pour un hostname deja garde: %v", c.accessApps)
+	}
+}
+
+// Remove retire la garde en DERNIER : rien n'est jamais ouvert tant que c'est
+// encore joignable.
+func TestRemoveUnguardsLast(t *testing.T) {
+	c := &capture{}
+	e := guardingExposer(t, c)
+
+	if err := e.Remove("hermes-mcp", "paranoid.foo"); err != nil {
+		t.Fatalf("Remove: %v", err)
+	}
+	if len(c.accessDeletes) != 1 {
+		t.Fatalf("l application Access n a pas ete supprimee: %v", c.accessDeletes)
+	}
+	if last := c.order[len(c.order)-1]; last != "access:DELETE" {
+		t.Errorf("la garde a ete retiree avant la publication: %v", c.order)
+	}
+}
+
+// Le Portal genere ses propres applications, d'un autre type. Les supprimer
+// casserait ce que cet outil n'a pas construit.
+func TestRemoveRefusesAForeignApplication(t *testing.T) {
+	c := &capture{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case strings.Contains(r.URL.Path, "/configurations") && r.Method == http.MethodGet:
+			_, _ = w.Write([]byte(realConfig))
+		case strings.Contains(r.URL.Path, "/access/apps") && r.Method == http.MethodGet:
+			_, _ = w.Write([]byte(`{"success":true,"errors":[],"result":[
+				{"id":"app-x","name":"portal-generated","type":"mcp","domain":"hermes-mcp.paranoid.foo"}]}`))
+		case strings.Contains(r.URL.Path, "/access/apps") && r.Method == http.MethodDelete:
+			c.accessDeletes = append(c.accessDeletes, r.URL.Path)
+			_, _ = w.Write([]byte(`{"success":true,"errors":[]}`))
+		case r.Method == http.MethodGet:
+			_, _ = w.Write([]byte(`{"success":true,"errors":[],"result":[]}`))
+		default:
+			_, _ = w.Write([]byte(`{"success":true,"errors":[]}`))
+		}
+	}))
+	defer srv.Close()
+
+	e := New("acc", "zone", "96c48771-9744-4d14-b0fa-16361efcdcf4", "test-token")
+	e.BaseURL = srv.URL
+	e.AccessPolicyID = "policy-abc"
+
+	err := e.Remove("hermes-mcp", "paranoid.foo")
+
+	if err == nil {
+		t.Fatal("Remove a supprime une application qu il n a pas creee")
+	}
+	if len(c.accessDeletes) != 0 {
+		t.Errorf("une application etrangere a ete supprimee: %v", c.accessDeletes)
 	}
 }

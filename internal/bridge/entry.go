@@ -77,6 +77,10 @@ type Entry struct {
 	// visible in a file that can be reviewed. See ADR 0001.
 	AllowPublic bool
 
+	// AccessPolicyID is an existing Access policy the tool attaches to the
+	// application it creates in front of this entry's hostname (ADR 0007).
+	AccessPolicyID string
+
 	// AccessClientID identifies a Cloudflare Access service token. It is an
 	// identifier, not a secret, so it sits in the config in clear like the other
 	// ids.
