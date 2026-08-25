@@ -9,6 +9,9 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- `doctor` — checks the preconditions and changes nothing. It reports a credential's *presence*,
+  never its validity, so running it cannot itself alter state or trip a rate limit; and every
+  failing check carries a hint, since a red line with no next step is a status, not a diagnosis.
 - `RetryCheck` and `ProbeHostnameResolves`, and `apply` now waits for a freshly published
   hostname before judging whether it is guarded — measured, the edge takes about two minutes,
   and judging immediately reported "could not confirm" on every new entry. `status` does not

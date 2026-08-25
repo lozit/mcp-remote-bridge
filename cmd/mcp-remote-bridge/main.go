@@ -65,6 +65,8 @@ func main() {
 		code, err = runStatus(args)
 	case "remove":
 		code, err = runRemove(args)
+	case "doctor":
+		code, err = runDoctor(args)
 	case "-h", "--help", "help":
 		usage()
 		return
@@ -245,6 +247,7 @@ func usage() {
   apply [name]        reconcile the machine to the config (idempotent)
   status [name]       probe every entry and change nothing
   remove <name>       tear one entry down; never implicit
+  doctor              check the preconditions; changes nothing
   set-secret <ref>    store a secret from a masked prompt
 
 Options:

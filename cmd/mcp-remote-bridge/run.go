@@ -9,6 +9,7 @@ import (
 	"github.com/lozit/mcp-remote-bridge/internal/bridge"
 	"github.com/lozit/mcp-remote-bridge/internal/cloudflared"
 	"github.com/lozit/mcp-remote-bridge/internal/config"
+	"github.com/lozit/mcp-remote-bridge/internal/doctor"
 	"github.com/lozit/mcp-remote-bridge/internal/keychain"
 	"github.com/lozit/mcp-remote-bridge/internal/launchd"
 )
@@ -214,4 +215,39 @@ func parseEntryArgs(command string, args []string) (name, configPath string, err
 		}
 	}
 	return name, configPath, nil
+}
+
+// runDoctor checks the preconditions and changes nothing.
+//
+// It loads the config best-effort: a config that will not load is itself the
+// first thing to report, and the environment checks still run without it —
+// exactly the case where someone most needs to be told what is missing.
+func runDoctor(args []string) (int, error) {
+	_, configPath, err := parseEntryArgs("doctor", args)
+	if err != nil {
+		return exitPrecondition, err
+	}
+
+	cfg, path, loadErr := loadConfig(configPath)
+	if loadErr != nil {
+		fmt.Fprintf(os.Stderr, "config: %v\n\n", loadErr)
+		cfg = nil
+	}
+
+	deps := doctor.Deps{}
+	if cfg != nil {
+		secrets := keychain.New(cfg.Infra.Keychain)
+		deps.ResolveSecret = secrets.Get
+	}
+
+	checks := doctor.Run(cfg, deps)
+	fmt.Print(doctor.Render(checks))
+
+	if !doctor.Healthy(checks) {
+		return exitPrecondition, nil
+	}
+	if cfg != nil {
+		fmt.Printf("\n  preconditions met; config at %s\n", path)
+	}
+	return exitOK, nil
 }

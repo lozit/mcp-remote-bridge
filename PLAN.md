@@ -105,8 +105,10 @@ seams plus `Entry` / `HealthReport` are declared with stubs returning
       new parameter) is mechanical; the *value* is the judgement call, which is why the loop was not
       allowed to guess it.
 
-- [ ] `[supervised]` — `doctor` checks the preconditions (connector running, token present, never
-      tested with a write). The command does not exist yet, and its shape is a design choice.
+- [x] `doctor` — **done**. Checks mcp-proxy, cloudflared, a *running* connector, this binary's
+      recorded path, the config, the API token and the Access service token. Never uses a
+      credential: it reports presence, not validity, so running it changes nothing and trips no
+      rate limit.
 - [x] `ensure_exposed` / `remove_exposed` — **done for the local half**: the walking skeleton
       runs end to end against real launchd, real mcp-proxy and a real keychain, with the Exposer
       left out. Remaining: wire the Exposer in once the Cloudflare credentials exist.
@@ -146,12 +148,10 @@ Each gets triaged later → a **decision** (ADR), a **build** (PRD), a **milesto
 - [x] The Exposer creates the Access application on the hostname, reusing the policy named by
       `[infra] access_policy_id`. Guards **before** publishing and unguards **last** — both
       orderings mutation-tested, since they are the security property, not the API calls.
-- [ ] `doctor` detects a Portal MCP server recorded as needing no authentication while its
-      origin is guarded: that combination is a dead end (the field only exists at creation), so
-      the fix is delete-and-recreate and the message must say it outright.
-- [ ] `doctor` reports the Portal's MCP server configuration as an outstanding manual step —
-      `/access/mcp_servers` answers `Unable to authenticate request`, so the route exists but is
-      closed to API tokens while Portals are Beta. Re-test when the Beta lifts.
+- [x] `doctor` reports the Portal step as outstanding, with the ordering that cannot be recovered
+      from: declare header authentication **at creation**. Detecting the dead-end state itself
+      stays impossible while `/access/mcp_servers` is closed to API tokens — re-test when the
+      Beta lifts.
 - [x] Probing with credentials after applying — **done and proven live**: `hostname_responds`
       reached `tools/list` through Access on a throwaway entry.
 
