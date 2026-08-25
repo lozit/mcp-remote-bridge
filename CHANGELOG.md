@@ -9,6 +9,14 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- `--version`, stamped from `git describe` at build time. A plain `go build` still reports
+  `dev`, since an unstamped binary is not a release and should not claim a number.
+- `make release` — build both darwin architectures, sign, notarise, checksum. Hand-rolled
+  rather than GoReleaser ([ADR 0009](docs/decisions/0009-release-is-hand-rolled-and-darwin-only.md)).
+  It refuses a dirty tree and refuses to build without a Developer ID.
+- A compile-time guard against non-darwin builds. The tool compiled cleanly for linux and
+  could never run there — it drives `launchctl` and `/usr/bin/security` — so the failure used
+  to surface as `exec: not found` at the user's first `apply`.
 - `ProbeHostnameResolves` is now bounded by `DNSLookupTimeout` (5s). It was the only probe
   inheriting whatever the system resolver decided, against the house rule that a probe which can
   hang is a probe that never reports. A deadline is reported as such rather than as a generic

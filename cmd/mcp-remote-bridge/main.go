@@ -30,6 +30,11 @@ const (
 // to run by hand and must never print a secret on any path.
 const launchCommand = "__launch"
 
+// version is stamped at build time by `make build` / `make release` from
+// `git describe`. It stays "dev" for a plain `go build`, which is honest: an
+// unstamped binary is not a release and should not claim a version number.
+var version = "dev"
+
 func main() {
 	// __launch is dispatched before Cobra, and deliberately so: launchd execs it,
 	// its arguments are its own, and it must not inherit anything Cobra decides —

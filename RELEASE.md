@@ -13,9 +13,9 @@
 
 ```bash
 # The exact commands of a normal release, in order:
-go vet ./... && gofmt -l . && go test ./...   # must be green, same order as CI
-git tag v0.1.0 && git push --follow-tags      # the tag is the trigger
-# GoReleaser (via CI) builds the matrix, attaches binaries + checksums, updates the tap
+git tag v0.1.0 && git push --follow-tags   # the tag is what VERSION comes from
+make release                              # check -> build+sign -> notarise -> checksums
+gh release create v0.1.0 dist/*.zip dist/SHA256SUMS
 ```
 
 ## Environments
@@ -26,12 +26,17 @@ This is a CLI, not a service — there is no staging or production *of the tool*
 | Channel | Trigger | Target | URL |
 |---|---|---|---|
 | Source | push on `main` | GitHub | https://github.com/lozit/mcp-remote-bridge |
-| Tagged binaries | tag `vX.Y.Z` | GitHub Releases (darwin/arm64, darwin/amd64; linux later) | `/releases` |
-| Homebrew | the same tag | `<fill in: tap repo — decide before v0.1>` | — |
+| Tagged binaries | tag `vX.Y.Z` | GitHub Releases (darwin/arm64, darwin/amd64 — **darwin only**) | `/releases` |
+| Homebrew | — | **not for v0.1** (ADR 0009) | — |
 | `go install` | the same tag | proxy.golang.org | `go install github.com/lozit/mcp-remote-bridge@latest` |
 
-**Undecided before v0.1** — the release toolchain (GoReleaser vs. a hand-rolled build
-matrix) and whether there is a Homebrew tap at all for the first release. → ADR.
+**Settled by [ADR 0009](docs/decisions/0009-release-is-hand-rolled-and-darwin-only.md)**: the
+release is hand-rolled (`make release`), darwin-only, and there is no Homebrew tap in v0.1.
+
+**There is no linux binary, and that is not an omission.** The tool compiles for linux but
+cannot run there — it drives `launchctl` and `/usr/bin/security`. A compile-time guard
+(`cmd/mcp-remote-bridge/platform_other.go`) turns that into an error naming the reason, rather
+than an `exec: not found` at the user's first `apply`.
 
 ## Pre-release checklist
 
@@ -57,12 +62,23 @@ matrix) and whether there is a Homebrew tap at all for the first release. → AD
 
 - **The tool's own secrets: none.** It ships no API key, no token, no endpoint.
 - **The release pipeline's secrets** — a GitHub token for the release (the default
-  `GITHUB_TOKEN` where possible), a tap-repo token if a Homebrew tap exists, and an Apple
-  signing/notarization identity **if** notarized macOS binaries turn out to be needed.
-  Names live here; values live in GitHub Actions secrets. `<fill in the names once set>`
-- **macOS Gatekeeper** — an unsigned downloaded binary is quarantined and refused. Decide
-  before v0.1 whether to notarize or to document the `xattr -d com.apple.quarantine`
-  workaround. Homebrew installs sidestep this; direct downloads do not.
+  `GITHUB_TOKEN` where possible) and the Apple notarisation credentials. The latter live in a
+  local `notarytool` keychain profile, created once:
+  `xcrun notarytool store-credentials mcp-remote-bridge --apple-id <id> --team-id <team>`
+  (override the name with `NOTARY_PROFILE=`). Releases are cut from a macOS host, so these
+  stay out of CI for now.
+- **macOS Gatekeeper — notarised, not worked around.** Teaching users `xattr -d
+  com.apple.quarantine` teaches them to disarm the check that protects them; the Developer ID
+  answers it properly. `make notarize` submits each archive and then **verifies the effect**
+  with `spctl --assess`, because a successful submission is not proof that Gatekeeper accepts
+  the result.
+- **The ticket is not stapled, and cannot be.** Stapling needs a bundle (`.app`, `.dmg`,
+  `.pkg`) to write the ticket into; a bare executable has nowhere to put it. Gatekeeper
+  resolves the ticket online on first run instead. Consequence to accept: the very first
+  launch on a fresh machine needs network. *Measured 2026-08-25 only as far as `stapler`
+  reaching Apple and returning "Record not found" for an unnotarised binary — whether it can
+  staple a notarised one is unconfirmed until the first real release. Confirm it then, and
+  record the answer here.*
 - **Code signing is not only about Gatekeeper: it is about the keychain prompt.** macOS grants
   keychain access to a binary by IDENTITY, and an unsigned binary's identity changes with its
   contents. So an unsigned release makes every user re-authorise access on **every update**, not

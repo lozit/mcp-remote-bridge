@@ -19,7 +19,11 @@ func newRootCommand(exitCode *int) *cobra.Command {
 			"A green exit means the probes passed, not that a file was written.",
 		SilenceUsage:  true, // a runtime failure is not a usage error
 		SilenceErrors: true, // main prints them, so the format stays ours
+		Version:       version,
 	}
+	// A bug report against "the version I downloaded" is unanswerable, so the
+	// binary states which commit it is. See ADR 0009.
+	root.SetVersionTemplate("mcp-remote-bridge {{.Version}}\n")
 	root.PersistentFlags().StringVar(&configPath, "config", "",
 		"config file (default $XDG_CONFIG_HOME/mcp-remote-bridge/config.toml)")
 

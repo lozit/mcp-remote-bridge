@@ -159,9 +159,18 @@ Each gets triaged later → a **decision** (ADR), a **build** (PRD), a **milesto
 
 - [x] Binary signing — **done**. `make build` signs with the Developer ID when one is available,
       and says so plainly when none is. Verified: two rebuilds, no prompt, 1s per call.
-- [ ] `[supervised]` — **notarise the release**. The Developer ID that fixed the keychain prompt is
-      the same identity notarisation needs, so `RELEASE.md`'s Gatekeeper question can now be
-      answered properly rather than with an `xattr` workaround.
+- [x] **Release toolchain decided and built** — [ADR 0009](docs/decisions/0009-release-is-hand-rolled-and-darwin-only.md),
+      accepted. Hand-rolled `make release` over GoReleaser (the matrix is two darwin targets;
+      notarisation needs a macOS host and Apple credentials either way, so GoReleaser would
+      automate the easy half). Darwin-only, no Homebrew tap in v0.1. `--version` stamped from
+      `git describe`. Verified: a dirty tree is refused, a missing Developer ID is refused.
+- [x] **Non-darwin builds now fail at compile time.** Found while scoping the release: the tool
+      built cleanly for linux and could never run there. It now fails with an identifier that
+      names the reason, tested in both directions (linux fails, darwin still builds).
+- [ ] `[supervised]` — **run the first notarisation.** `make notarize` is written and verifies
+      its own effect with `spctl --assess`, but it has never been run: it needs a `notarytool`
+      keychain profile. The open question it will answer is whether a notarised bare executable
+      can be stapled at all — `RELEASE.md` says it cannot and marks that as unconfirmed.
 
 ## Operational — the maintainer's own infrastructure, not this codebase
 
