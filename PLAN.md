@@ -85,9 +85,15 @@ seams plus `Entry` / `HealthReport` are declared with stubs returning
       added, re-ensured (no write — confirmed by the `version` counter not moving), then removed,
       with the configuration byte-identical before and after and no DNS residue. All three seams
       have now touched reality.
-- [ ] `[supervised]` — the **complete** walking skeleton: `EnsureExposed` with the Exposer wired
-      in, verified through the public hostname rather than loopback. Needs the `mcp_responds`
-      probe to carry Access credentials first if a policy guards the hostname.
+- [x] **The complete walking skeleton runs** (2026-08-21). `apply` on a throwaway entry against
+      the real tunnel: service loaded, proxy listening, `mcp_responds` and `hostname_responds`
+      both reaching `tools/list` through Access with service tokens. `remove` restored the
+      configuration exactly — no Access application, DNS record or launchd service left behind.
+- [ ] **A new hostname is not reachable immediately**: measured ~2 minutes between `apply` and the
+      edge serving it (TCP connect fails outright until then, before TLS, so it is not a
+      certificate issue). `apply` reports it red and warns that it cannot confirm the hostname is
+      guarded — correct but unhelpful. It should wait and re-probe: "hostname added but DNS not
+      yet propagated" is a named failure mode in the spec, not a real failure.
 - [ ] `[supervised]` — config: `[infra]` gains `account_id`, `zone_id`, `tunnel_id`, `api_token`
       and loses `tunnel`; the parser must validate `api_token` as a secret reference like any
       other. `doctor` checks the new preconditions (connector running, token present — never

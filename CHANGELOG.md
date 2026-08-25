@@ -9,6 +9,9 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- `apply`, `status` and `remove` — the CLI. Load, loop, report, with the documented exit codes
+  (`0` all healthy, `1` a precondition failed, `2` at least one entry unhealthy). The report
+  prints only the checks that actually ran.
 - `[infra] access_policy_id` — the Exposer now puts a Cloudflare Access application in front of
   each hostname it publishes, attaching an **existing** policy rather than authoring one
   (ADR 0007). It guards before publishing and unguards last, so a hostname is never reachable

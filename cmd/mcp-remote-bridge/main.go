@@ -39,17 +39,45 @@ func main() {
 		return
 	}
 
-	if len(os.Args) > 1 && os.Args[1] == "set-secret" {
-		if err := runSetSecret(os.Args[2:]); err != nil {
+	if len(os.Args) < 2 {
+		usage()
+		os.Exit(exitPrecondition)
+	}
+
+	command, args := os.Args[1], os.Args[2:]
+
+	if command == "set-secret" {
+		if err := runSetSecret(args); err != nil {
 			fmt.Fprintf(os.Stderr, "mcp-remote-bridge set-secret: %v\n", err)
 			os.Exit(exitPrecondition)
 		}
 		return
 	}
 
-	// Cobra command structure arrives with the rest of Milestone 2.
-	fmt.Fprintln(os.Stderr, "mcp-remote-bridge: not implemented yet — see PLAN.md")
-	os.Exit(exitPrecondition)
+	var (
+		code int
+		err  error
+	)
+	switch command {
+	case "apply":
+		code, err = runApply(args)
+	case "status":
+		code, err = runStatus(args)
+	case "remove":
+		code, err = runRemove(args)
+	case "-h", "--help", "help":
+		usage()
+		return
+	default:
+		fmt.Fprintf(os.Stderr, "unknown command %q\n\n", command)
+		usage()
+		os.Exit(exitPrecondition)
+	}
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "mcp-remote-bridge %s: %v\n", command, err)
+	}
+	os.Exit(code)
 }
 
 // runLaunch resolves one entry's secrets and execs the proxy. On success it
@@ -209,4 +237,20 @@ func stty(mode string) error {
 		return fmt.Errorf("setting terminal echo %s: %w", mode, err)
 	}
 	return nil
+}
+
+func usage() {
+	fmt.Fprint(os.Stderr, `mcp-remote-bridge — make local stdio MCP servers reachable from a remote agent
+
+  apply [name]        reconcile the machine to the config (idempotent)
+  status [name]       probe every entry and change nothing
+  remove <name>       tear one entry down; never implicit
+  set-secret <ref>    store a secret from a masked prompt
+
+Options:
+  --config <path>     defaults to $XDG_CONFIG_HOME/mcp-remote-bridge/config.toml
+
+Exit codes: 0 all healthy · 1 a precondition failed · 2 at least one entry unhealthy.
+A green exit means the probes passed, not that a file was written.
+`)
 }
