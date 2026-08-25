@@ -12,6 +12,41 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Pair every "must fail" fixture with a "must succeed" control on the same dependency
+
+**Why**: `TestProbeHostnameResolvesFailsForANameThatDoesNot` looks airtight — the `.invalid` TLD
+is reserved by RFC 2606 so it can never resolve. But the assertion passes just as happily when
+the **resolver itself is unreachable**. On a machine with no DNS, the probe would look correct
+while being unable to resolve anything at all, and the test would say nothing about it.
+
+The same shape had already appeared twice in this project: `plutil -lint` proving a plist parses
+but not that launchd accepts it, and a `GET /mcp` returning `406` whether or not the hostname was
+guarded. A negative assertion is only as strong as the assumption that the dependency was
+*working and said no* — rather than *absent*.
+
+The fix is cheap: in the same run, resolve names that must succeed (`example.com`,
+`one.one.one.one`) and check the failure unwraps to the specific error you expect —
+`*net.DNSError` with `IsNotFound=true`, not just "some error".
+
+**When to apply**: any test asserting that something fails — a name that must not resolve, a port
+that must be closed, a request that must be refused, a permission that must be denied. Ask what
+else produces that same failure, and add a positive control that rules it out. Prefer asserting
+on the *specific* error over "an error occurred".
+
+## Distinguish a flaky test from a regression before chasing it
+
+**Why**: `TestEnsureExposedRepairsDrift` fails roughly one run in ten, independently of any diff —
+measured 1/20 at a clean HEAD and 1/8 with an unrelated change. It boots out a real launchd job
+and races its re-registration; a failing run takes ~30s against ~2.5s for a green one.
+
+Left unmeasured, it costs one debugging session per person who meets it, each concluding their own
+change broke it.
+
+**When to apply**: before investigating any test failure in a suite that touches real OS state,
+re-run it at a clean tree (`git stash` then `-count=10`). Record the observed rate somewhere the
+next person reads. A flake with a measured rate is an annoyance; an unmeasured one is a trap that
+misattributes itself to whatever diff is in flight.
+
 ## Before deleting a resource, find out what else points at it
 
 **Why**: recreating a Cloudflare MCP Portal server (the only way out of the authentication

@@ -76,6 +76,13 @@ seams plus `Entry` / `HealthReport` are declared with stubs returning
       added, re-ensured (no write — confirmed by the `version` counter not moving), then removed,
       with the configuration byte-identical before and after and no DNS residue. All three seams
       have now touched reality.
+- [ ] `[supervised]` — **stabilise `TestEnsureExposedRepairsDrift`**, flaky at ~1/10 (measured
+      1/20 at clean HEAD, 1/8 with an unrelated diff). It races launchd's re-registration after an
+      external bootout. Needs a wait on the observable state rather than an assumption about
+      timing — the same fix as `waitUnhealthy`, applied to re-registration.
+- [ ] `[supervised]` — **strengthen the negative DNS assertion**: pair it with a positive control
+      in the same run and assert the error unwraps to `*net.DNSError{IsNotFound: true}`. The test
+      currently passes on a machine where nothing resolves.
 - [x] Realize #3: two tasks partitioned to `[loop]` (`RetryCheck`, `ProbeHostnameResolves`) with
       red acceptance tests frozen; six PLAN entries found already done and checked off rather than
       partitioned (2026-08-21)
