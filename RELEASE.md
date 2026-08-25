@@ -71,6 +71,9 @@ matrix) and whether there is a Homebrew tap at all for the first release. → AD
   error, because the call blocks on a dialog the process cannot see.
   Signing with a stable identity fixes it; an ad-hoc signature does not, since it is derived from
   the contents.
+  **Resolved for development** (2026-08-25): `make build` signs with the Developer ID when one is
+  available. Verified — two rebuilds, no prompt, 1s per call against 30s unsigned. The same
+  identity is what a notarised release needs, so this is not a development-only workaround.
 
 ## Rollback
 

@@ -149,10 +149,11 @@ Each gets triaged later → a **decision** (ADR), a **build** (PRD), a **milesto
       the symptom in code is a **network timeout**, not a message. Approved, the same call took 6s.
       `RequestTimeout` stays at 90s — it exists to stop a hang, not to enforce a latency budget.
 
-- [ ] `[supervised]` — **sign the binary with a stable identity**. Unsigned, macOS re-prompts for
-      keychain access on every rebuild (and would on every user update), and the symptom in code
-      is a network timeout rather than an error. Needs a self-signed code-signing certificate and
-      a `codesign` step in the build; an ad-hoc signature will not do, being content-derived.
+- [x] Binary signing — **done**. `make build` signs with the Developer ID when one is available,
+      and says so plainly when none is. Verified: two rebuilds, no prompt, 1s per call.
+- [ ] `[supervised]` — **notarise the release**. The Developer ID that fixed the keychain prompt is
+      the same identity notarisation needs, so `RELEASE.md`'s Gatekeeper question can now be
+      answered properly rather than with an `xattr` workaround.
 
 ## Operational — the maintainer's own infrastructure, not this codebase
 

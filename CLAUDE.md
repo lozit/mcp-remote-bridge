@@ -41,11 +41,14 @@ A small Go tool that makes a local **stdio** MCP server reachable from a remote 
 
 - Install deps: `go mod download`
 - Run dev: `go run ./cmd/mcp-remote-bridge <command>`
-- Test: `go test ./...`
-- Lint: `gofmt -l .` (must print nothing) then `go vet ./...`
-- Build: `go build -o mcp-remote-bridge ./cmd/mcp-remote-bridge`
+- Build: `make build` — compiles **and signs** when a Developer ID is available
+- Quality suite: `make check` (gofmt → vet → test, CI's order)
 
-**Run the quality suite in CI's order**: `gofmt -l .` → `go vet ./...` → `go test ./...`.
+<important if="the binary reads a secret and seems to hang">Build with `make build`, not
+`go build`. macOS grants keychain access by binary **identity**, so an unsigned binary is
+re-authorised on every rebuild — and the symptom is a **network timeout**, not an error, because
+the call blocks on a dialog the process cannot see. Signed: 1s. Unsigned: 30s and a
+prompt.</important>
 
 <important if="about to claim something works">A green `go test ./...` proves the mocks
 pass, not that the tool works. Every seam (`ServiceManager`, `Exposer`, `SecretSource`) is
