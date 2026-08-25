@@ -104,12 +104,35 @@ dist:
 # executable - there is no bundle to staple it into - so Gatekeeper resolves it
 # online on first run. That is the accepted shape for a CLI, and it is why the
 # archive, not the binary, is what gets submitted.
+#
+# NOTARY_WAIT is explicit because the default is not long enough and, worse,
+# reports its expiry as `HTTPClientError.connectTimeout` - which reads as a
+# network fault when nothing has failed at all: the upload succeeded and Apple
+# is still processing.
+#
+# Measured 2026-08-25: a 7MB archive was still In Progress 56 minutes after
+# submission, and `--wait` itself died twice with a request timeout against
+# appstoreconnect.apple.com while `notarytool info` answered instantly
+# throughout. So the two failures are different things and must not be read as
+# one: `--wait` holds a long-lived connection that some environments kill,
+# whereas `info` is a short request. A dead `--wait` says NOTHING about the
+# submission.
+#
+# Nothing is ever lost when this expires. Recover by polling, not by waiting,
+# and never by resubmitting:
+#   xcrun notarytool info <id> --keychain-profile $(NOTARY_PROFILE)
+# then re-run `make notarize` once it reports Accepted.
+NOTARY_WAIT ?= 45m
+
 notarize:
 	@test -d $(DIST) || { echo "run 'make dist' first"; exit 1; }
 	@for zip in $(DIST)/*.zip; do \
-		echo "notarising $$zip"; \
-		xcrun notarytool submit "$$zip" \
-			--keychain-profile "$(NOTARY_PROFILE)" --wait || exit 1; \
+		echo "notarising $$zip (up to $(NOTARY_WAIT); the upload is quick, Apple's queue is not)"; \
+		xcrun notarytool submit "$$zip" --keychain-profile "$(NOTARY_PROFILE)" \
+			--wait --timeout $(NOTARY_WAIT) || { \
+			echo "submission did not complete. It may still be processing - check with:"; \
+			echo "  xcrun notarytool history --keychain-profile $(NOTARY_PROFILE)"; \
+			exit 1; }; \
 	done
 	@echo "checking the effect, not the submission:"
 	@for zip in $(DIST)/*.zip; do \

@@ -12,6 +12,32 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## A dead client says nothing about the server it was waiting on
+
+**Why**: `make release` failed on `HTTPClientError.connectTimeout` from `notarytool submit
+--wait`. That reads as a network fault, so the reflex is to retry the whole thing — which would
+have resubmitted an archive Apple had already accepted for processing. The upload had in fact
+succeeded: `notarytool history` showed the submission with an id and `status: In Progress`.
+
+Then it happened twice more, and the shape became legible. `notarytool info` answered instantly
+throughout, while `--wait` died against the same host. They are not the same request: `wait`
+holds a long-lived connection that some environments kill, `info` is a short one. **The client
+that timed out was reporting on itself, not on the work.**
+
+This is the same failure as the keychain prompt earlier in this project, where a blocked dialog
+surfaced in code as a network timeout — a transport error standing in for a state nobody had
+asked about. Both times the error named the messenger.
+
+The fix is to ask the server: poll with `info`, never re-drive the operation on a dead waiter.
+
+**When to apply**: whenever a long-running remote operation reports a client-side timeout —
+notarisation, a CI run, a deploy, a queued job. Before retrying, find the read-only query that
+reports the *server's* state and run it. Retrying on a timeout you have not diagnosed risks
+duplicating work that already succeeded. And when writing such a step, make the recovery path
+a poll, not a longer wait.
+
+---
+
 ## A name is not an identifier unless the system enforces it
 
 **Why**: Cloudflare allows two Access service tokens to share a name. `setup` looked one up by
