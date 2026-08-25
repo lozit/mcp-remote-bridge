@@ -67,6 +67,14 @@ capabilities` fails with the very `403` you are trying to fix, and the only way 
 live resource to recreate it. Whatever the tool automates, it must create in that order, and
 `doctor` must say so when it finds a Portal server in the wrong state.
 
+The delete-and-recreate escape has its own cost, also measured: it removes the server from the
+**Portal's server selection**, and nothing signals it. The server is recreated, its Access
+application is recreated, the dashboard reports `status: ready` — and a client calling a tool
+gets `Tool Server not found`. Re-selecting is a checkbox for the account owner, but the path a
+client is offered (`portal_toggle_servers`) leads to an Access login the Portal has no identity
+policy for. That is one more reason to create in the right order: there is no clean automated
+repair once the state is wrong.
+
 This makes ADR 0001's refusal coherent: the tool refuses an open hostname because it can now
 close it, not instead of closing it.
 

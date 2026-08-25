@@ -147,8 +147,10 @@ Each gets triaged later → a **decision** (ADR), a **build** (PRD), a **milesto
       signature as `hermes-mcp`.
 - [x] `mcp-standardnotes` checked: **not affected**. It is served by `hermes-mcp.paranoid.foo`
       (port 8080), which was already guarded — the hostname name is simply misleading.
-- [ ] Confirm an end-to-end tool call through the Portal (`get_current_glucose`): `status: ready`
-      proves discovery succeeded, not that a call is served.
+- [x] End-to-end confirmed: the server had to be **re-ticked in the Portal's server selection**
+      after the delete-and-recreate. `status: ready` described the server, not the service.
+- [ ] `doctor` should flag an entry whose hostname is guarded and whose Portal server is absent
+      from the selection — the state is invisible from every screen except a client's tool call.
 
 ## Waiting / blocked
 

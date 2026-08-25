@@ -12,6 +12,34 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Before deleting a resource, find out what else points at it
+
+**Why**: recreating a Cloudflare MCP Portal server (the only way out of the authentication
+deadlock above) silently removed it from the Portal's **server selection**. Everything else came
+back: the server was recreated, the auto-generated Access application was recreated, the
+dashboard showed `status: ready`. Only a client calling a tool revealed it — `Tool Server not
+found`.
+
+The recovery hunt then went four steps too far. `portal_list_servers` showed the server was not
+merely disabled but *absent from the selection*; `portal_toggle_single_server` answered
+`Server not found`; the documented re-selection flow led to a Cloudflare Access login the account
+had no policy for; and the next suggestion on that path was to add an identity policy to the
+Portal — widening access to a production application in order to tick a box.
+
+The actual fix was to tick the box, in the dashboard, as the account owner.
+
+**When to apply**: before deleting anything that another system references, enumerate what points
+at it and how each pointer is restored — automatically, or by hand. Recreating a resource
+restores the resource, not the references to it.
+
+And when a recovery path starts requiring *new permissions, new policies, or wider access*, stop.
+That is the signal that you have left the intended path. The intended one is usually shorter and
+duller; here it was one checkbox on a screen nobody had opened.
+
+Corollary: `ready` describes the resource, not the service. A component can be healthy and
+unreferenced at the same time, and only an end-to-end call tells them apart — the same reason
+this project probes rather than reading configuration.
+
 ## Declare authentication when creating a resource — some systems will not let you add it later
 
 **Why**: a Cloudflare MCP Portal server created against an unauthenticated origin records *"this
