@@ -36,3 +36,4 @@ No ADR needed for trivial choices or implementation details.
 | [0004](0004-keychain-read-must-use-g-not-w.md) | Read keychain secrets with `security -g`, never `-w` | Accepted | 2026-08-21 |
 | [0005](0005-toml-library-and-dependency-policy.md) | TOML library: `pelletier/go-toml/v2`, and the dependency policy | Accepted | 2026-08-21 |
 | [0006](0006-exposer-targets-remotely-managed-tunnels.md) | The Exposer targets remotely-managed tunnels, via the Cloudflare API | Accepted | 2026-08-21 |
+| [0007](0007-the-tool-owns-the-access-configuration.md) | The tool owns the Access configuration, not just the plumbing | Accepted | 2026-08-21 |

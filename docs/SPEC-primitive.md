@@ -192,8 +192,12 @@ The primitive never touches `launchctl`, `cloudflared`, or `security` directly.
    stdlib. Chosen for the artifact, not the fleet.
 2. **MVP boundary**: macOS + cloudflared + keychain; a config listing entries;
    `ensure` / `remove` / `status`; the `initialize` probe. Nothing else.
-3. **Portals registration is out** of the primitive at first — the Mac-side is the
-   real gain; Portals moves rarely and is Cloudflare-Beta-specific.
+3. ~~**Portals registration is out** of the primitive at first~~ — **partly reopened by
+   [ADR 0007](decisions/0007-the-tool-owns-the-access-configuration.md)**. The decision assumed
+   hostnames and Portal were alternatives; measured, the Portal reaches each MCP *through* the
+   tunnel hostname (`HTTP URL = https://<host>/sse`), so one is the origin of the other. The tool
+   now owns the Access application guarding that hostname. Configuring the Portal's own MCP
+   server stays out — its API route is closed to tokens while the feature is Beta.
 4. **Port auto-assigned if absent**, explicit if given.
 
 ## Deferred (wanted, out of the MVP)

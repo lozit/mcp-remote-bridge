@@ -12,6 +12,35 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## The cost of a manual procedure is its confusion, not its length
+
+**Why**: this project was founded on replacing a 489-line guide — length as the measure of the
+problem. Guarding one MCP by hand turned out to be four steps, and the maintainer, who had built
+the infrastructure himself and knew it, spent twenty minutes stuck on it. Not because it was
+long. Because:
+
+- two different screens present a field labelled **authentication**, meaning different things:
+  who may reach the hostname, versus what the Portal presents when it reaches it;
+- the second field **does not appear** until the first is configured, since the Portal only
+  offers to authenticate once the origin starts refusing it — so the correct order is
+  discoverable only by breaking something first;
+- one of the values is shown **exactly once** and never again;
+- the source guide calls the unguarded path *"that's fine"*, so following it faithfully produces
+  the hole.
+
+The stuck-ness was the useful signal, not the page count. It is also what made the scope decision
+obvious: the API can do three of the four steps, and returns the one-time secret that the
+dashboard does not.
+
+**When to apply**: when justifying a tool that automates a manual procedure, measure the
+procedure's **confusion**, not its size. Ask where a knowledgeable person hesitates, which fields
+share a name, what order is non-obvious, and what value cannot be recovered if missed. Those are
+the parts worth automating — a long but linear procedure is often fine as a script or a checklist.
+
+Corollary observed here: an API surface can be *safer* than its dashboard, not merely faster.
+Returning a secret once in a response body that goes straight to a keychain beats displaying it
+once in a browser where the only place to put it is a clipboard.
+
 ## Integration tests that share a global resource are not isolated, they are sequenced
 
 **Why**: the walking-skeleton tests derived their entry name from the process id, so every test

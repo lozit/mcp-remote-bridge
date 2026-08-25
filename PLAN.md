@@ -122,6 +122,19 @@ Each gets triaged later → a **decision** (ADR), a **build** (PRD), a **milesto
 - [ ] Homebrew tap — is there one for v0.1, and where does it live?
 - [ ] Security contact / GitHub private advisory, before the repo gets any users
 
+## Next — ADR 0007, the tool owns the Access configuration
+
+- [ ] `ensure_exposed` creates/reuses a service token, storing its secret through the
+      `SecretSource` (the API returns it; the dashboard shows it once, which is why this step is
+      worth automating above all others).
+- [ ] `ensure_exposed` creates the Access application on the entry's hostname, **reusing** an
+      existing `any_valid_service_token` policy rather than authoring one.
+- [ ] `doctor` reports the Portal's MCP server configuration as an outstanding manual step —
+      `/access/mcp_servers` answers `Unable to authenticate request`, so the route exists but is
+      closed to API tokens while Portals are Beta. Re-test when the Beta lifts.
+- [ ] After applying, probe **with** credentials: a green `hostname_responds` is the proof the
+      Access configuration works. The API accepting the write is not.
+
 ## Operational — the maintainer's own infrastructure, not this codebase
 
 - [ ] **Add a Self-hosted Access application on `freestyle-mcp.paranoid.foo`.** Measured

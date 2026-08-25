@@ -9,6 +9,10 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- ADR 0007 — the tool takes ownership of the Access configuration it publishes: service token and
+  Access application, so that ADR 0001's refusal becomes coherent (it refuses an open hostname
+  because it can close it, not instead of closing it). The Portal's own MCP server configuration
+  stays manual while that API route is closed to tokens.
 - The access-policy check of ADR 0001 — `apply` refuses an entry whose hostname answers an
   unauthenticated MCP handshake, unless `allow_public = true`. Anything ambiguous warns rather
   than blocking, so a broken tunnel never masquerades as a security failure.

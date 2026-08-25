@@ -126,8 +126,15 @@ tool modify a zone's DNS, which is the strongest capability anywhere in this sys
 - **It is a `SecretSource` reference**, never a config value, never in `argv`, resolved at the
   moment of use. Rule 3 covers it, and it is now the most important thing rule 3 covers.
 - **Least privilege is required, not advised**: `Zone:DNS:Edit` scoped to the single zone, plus
-  `Account:Cloudflare Tunnel:Edit`. **Never a Global API Key** — it is account-wide and cannot be
-  scoped, so a leak would be unbounded.
+  `Account:Cloudflare Tunnel:Edit`, plus `Access: Apps and Policies:Edit` and
+  `Access: Service Tokens:Edit` since [ADR 0007](decisions/0007-the-tool-owns-the-access-configuration.md).
+  **Never a Global API Key** — it is account-wide and cannot be scoped, so a leak would be
+  unbounded. Set **Account Resources to a specific account**, not "All accounts": scoping the zone
+  while leaving the account open is the asymmetry that makes a token look tighter than it is.
+- **The blast radius grew with ADR 0007.** The token no longer only routes traffic: it decides
+  *who may reach* these applications. A leaked token could open a hostname as easily as close one.
+  That is the price of the tool being able to guard what it publishes, and it is the reason the
+  scoping above is a requirement rather than a suggestion.
 - **`doctor` reports its presence, never its value**, and must not "test" it with a write.
 - **If it leaks**: revoke it in the Cloudflare dashboard first, then `set-secret` a fresh one.
   Revocation comes first because rotation alone leaves the old token valid.
