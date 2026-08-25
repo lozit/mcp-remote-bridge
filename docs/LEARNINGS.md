@@ -12,6 +12,30 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Wait for the state you depend on, not for a symptom of it
+
+**Why**: a drift-repair test booted a launchd job out, waited for the entry to become
+**unhealthy**, then repaired it. It failed about one run in ten, and two plausible fixes missed:
+verifying the bootstrap's effect (right in itself, not the cause) and shortening the restart
+throttle (wrong hypothesis, measured unchanged at 3/15).
+
+Instrumenting showed the repair *working* — loaded, running, with a pid — and then **vanishing
+two seconds later**. Health falls before registration does: the port closes while the job is
+still registered. Repairing in that window produced a service the tail of the original bootout
+then removed. Waiting for the label to actually be gone: 0 failures in 20.
+
+The two states looked interchangeable and were not. "Unhealthy" was a *symptom* of the unload;
+"not registered" was the *state* the next step depended on.
+
+**When to apply**: whenever a test or a reconciler waits before acting on shared state. Name the
+precise condition the next step requires, and wait for that — not for the first observable
+consequence of it. They usually differ by a window just wide enough to be intermittent.
+
+Corollary on method: two hypotheses were tried before instrumenting, and both were plausible
+enough to feel like progress. For an intermittent failure, print the state over time on the
+failing run first. Guessing costs more than measuring, and a fix that reduces a flake rate
+without explaining it has not been verified — it has been perturbed.
+
 ## Pair every "must fail" fixture with a "must succeed" control on the same dependency
 
 **Why**: `TestProbeHostnameResolvesFailsForANameThatDoesNot` looks airtight — the `.invalid` TLD

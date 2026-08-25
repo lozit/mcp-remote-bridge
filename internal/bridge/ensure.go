@@ -90,7 +90,7 @@ func (b *Bridge) EnsureExposed(entry Entry) (HealthReport, error) {
 		StdoutPath:       b.LogPath(entry.Name),
 		StderrPath:       b.LogPath(entry.Name),
 		KeepAlive:        KeepAlivePolicy{OnFailure: true, OnCrash: true},
-		ThrottleInterval: DefaultThrottleInterval,
+		ThrottleInterval: b.throttleInterval(),
 	}
 	if err := b.Services.Ensure(spec.Label, spec); err != nil {
 		return report, fmt.Errorf("ensuring the service for %q: %w", entry.Name, err)
@@ -179,6 +179,14 @@ func (b *Bridge) httpClient() *http.Client {
 		return b.HTTPClientForTest
 	}
 	return &http.Client{Timeout: MCPProbeTimeout}
+}
+
+// throttleInterval is the restart throttle written into service definitions.
+func (b *Bridge) throttleInterval() time.Duration {
+	if b.ThrottleInterval > 0 {
+		return b.ThrottleInterval
+	}
+	return DefaultThrottleInterval
 }
 
 // sleep is the Bridge's wait, defaulting to the real clock.

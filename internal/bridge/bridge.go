@@ -31,6 +31,15 @@ type Bridge struct {
 	// budget against a local server, in milliseconds.
 	HTTPClientForTest *http.Client
 
+	// ThrottleInterval overrides how long launchd waits before restarting a
+	// repeatedly-failing service. Zero means DefaultThrottleInterval.
+	//
+	// Tests set it low: after a bootout followed by a bootstrap, launchd applies
+	// this interval before starting the program at all, so a production value of
+	// a minute makes an integration test wait a minute for a service that is
+	// already loaded.
+	ThrottleInterval time.Duration
+
 	// Sleep is how the Bridge waits. Nil means time.Sleep; tests inject a
 	// recorder so a five-minute budget costs nothing to exercise.
 	Sleep func(time.Duration)

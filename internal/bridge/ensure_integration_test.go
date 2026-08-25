@@ -89,8 +89,16 @@ func TestEnsureExposedRepairsDrift(t *testing.T) {
 
 	// Drift: something unloaded the service behind our back.
 	_ = exec.Command("launchctl", "bootout", fmt.Sprintf("gui/%d/%s", os.Getuid(), bridge.Label(env.entry.Name))).Run()
+
+	// Wait for the LABEL to be gone, not merely for the entry to be unhealthy.
+	// `launchctl bootout` returns before it takes effect, and health falls first:
+	// the port closes while the job is still registered. Repairing at that
+	// moment produces a service that launchd then removes on the tail of the
+	// original bootout — measured, the repair looked healthy for ~2s and then
+	// vanished. That race is what made this test fail about one run in ten.
+	waitUnloaded(t, env)
 	if report := waitUnhealthy(t, env); report.Healthy() {
-		t.Fatal("precondition failed: the entry still reports healthy 30s after being unloaded")
+		t.Fatal("precondition failed: the entry still reports healthy after being unloaded")
 	}
 
 	if _, err := env.bridge.EnsureExposed(env.entry); err != nil {
@@ -250,6 +258,10 @@ secrets   = { E2E_TOKEN = "keychain:skeleton-secret" }
 	b.ConfigPath = cfgPath
 	b.LogDir = dir
 	b.ProxyPath = proxy
+	// launchd applies ThrottleInterval before restarting a service, so the
+	// production value of a minute would make every drift-repair test wait a
+	// minute for a service that is already loaded.
+	b.ThrottleInterval = time.Second
 
 	t.Cleanup(func() {
 		_ = exec.Command("launchctl", "bootout",
@@ -267,6 +279,20 @@ secrets   = { E2E_TOKEN = "keychain:skeleton-secret" }
 // So a test that boots a service out and probes immediately is asserting that
 // the system is synchronous, which it is not. Waiting here is not slackening
 // the assertion: the report must still go red, within a bound.
+// waitUnloaded blocks until launchd no longer knows the label.
+func waitUnloaded(t *testing.T, env *skeleton) {
+	t.Helper()
+	label := bridge.Label(env.entry.Name)
+	deadline := time.Now().Add(30 * time.Second)
+	for time.Now().Before(deadline) {
+		if st, err := env.manager.Status(label); err == nil && !st.Loaded {
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	t.Fatalf("%s is still loaded 30s after being booted out", label)
+}
+
 func waitUnhealthy(t *testing.T, env *skeleton) bridge.HealthReport {
 	t.Helper()
 	deadline := time.Now().Add(30 * time.Second)
