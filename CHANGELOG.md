@@ -9,6 +9,9 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- `logs <name>` and `restart <name>`. `restart` bounces the service only — the hostname, ingress
+  rule and DNS record are untouched, so it never risks the published name. `logs` always prints
+  the path, since "nothing to show" and "wrong place" are different problems.
 - `doctor` — checks the preconditions and changes nothing. It reports a credential's *presence*,
   never its validity, so running it cannot itself alter state or trip a rate limit; and every
   failing check carries a hint, since a red line with no next step is a status, not a diagnosis.

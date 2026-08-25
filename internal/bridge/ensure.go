@@ -70,11 +70,6 @@ func (b *Bridge) EnsureExposed(entry Entry) (HealthReport, error) {
 	if err := ValidateSubdomain(entry.Subdomain); err != nil {
 		return report, err
 	}
-	port := ResolvePort(entry)
-	if b.ProxyPath == "" {
-		return report, fmt.Errorf("no mcp-proxy path resolved: it is a precondition and must be located before applying")
-	}
-
 	// Rule 3: resolve every referenced secret NOW, before anything is written or
 	// launched. An absent secret must fail here, loudly, rather than produce a
 	// proxy that 401s silently. The values are discarded — only the launcher
@@ -83,21 +78,16 @@ func (b *Bridge) EnsureExposed(entry Entry) (HealthReport, error) {
 		return report, err
 	}
 
-	spec := ServiceSpec{
-		Label:            Label(entry.Name),
-		Program:          b.BinaryPath,
-		Args:             []string{"__launch", entry.Name, "--config", b.ConfigPath, "--port", fmt.Sprint(port), "--proxy", b.ProxyPath},
-		StdoutPath:       b.LogPath(entry.Name),
-		StderrPath:       b.LogPath(entry.Name),
-		KeepAlive:        KeepAlivePolicy{OnFailure: true, OnCrash: true},
-		ThrottleInterval: b.throttleInterval(),
+	spec, err := b.serviceSpec(entry)
+	if err != nil {
+		return report, err
 	}
 	if err := b.Services.Ensure(spec.Label, spec); err != nil {
 		return report, fmt.Errorf("ensuring the service for %q: %w", entry.Name, err)
 	}
 
 	if b.Exposer != nil {
-		if err := b.Exposer.Ensure(entry.Subdomain, entry.Domain, port); err != nil {
+		if err := b.Exposer.Ensure(entry.Subdomain, entry.Domain, ResolvePort(entry)); err != nil {
 			return report, fmt.Errorf("exposing %s: %w", entry.Hostname(), err)
 		}
 	}
@@ -222,6 +212,53 @@ func (b *Bridge) RemoveExposed(entry Entry) (HealthReport, error) {
 	}
 	if err := b.Services.Remove(Label(entry.Name)); err != nil {
 		return HealthReport{Entry: entry.Name}, fmt.Errorf("removing the service for %q: %w", entry.Name, err)
+	}
+	return b.Probe(entry), nil
+}
+
+// serviceSpec builds the service definition for an entry.
+//
+// Shared by EnsureExposed and RestartService so a restart cannot drift from
+// what apply would have written — two definitions of the same service is a bug
+// waiting for the day they differ.
+func (b *Bridge) serviceSpec(entry Entry) (ServiceSpec, error) {
+	port := ResolvePort(entry)
+	if b.ProxyPath == "" {
+		return ServiceSpec{}, fmt.Errorf("no mcp-proxy path resolved: it is a precondition and must be located before applying")
+	}
+	return ServiceSpec{
+		Label:            Label(entry.Name),
+		Program:          b.BinaryPath,
+		Args:             []string{"__launch", entry.Name, "--config", b.ConfigPath, "--port", fmt.Sprint(port), "--proxy", b.ProxyPath},
+		StdoutPath:       b.LogPath(entry.Name),
+		StderrPath:       b.LogPath(entry.Name),
+		KeepAlive:        KeepAlivePolicy{OnFailure: true, OnCrash: true},
+		ThrottleInterval: b.throttleInterval(),
+	}, nil
+}
+
+// RestartService bounces the entry's service and re-probes it.
+//
+// It goes through the ServiceManager's existing Remove and Ensure rather than a
+// new seam method: restarting is not a new capability, it is the two the seam
+// already has, in order. Adding to the three interfaces needs an ADR, and
+// nothing here earns one.
+//
+// It touches the SERVICE only. The hostname, the ingress rule and the DNS
+// record are left alone, so a restart never risks the published name — the
+// thing most likely to be depended on by something else while you debug.
+func (b *Bridge) RestartService(entry Entry) (HealthReport, error) {
+	report := HealthReport{Entry: entry.Name}
+
+	spec, err := b.serviceSpec(entry)
+	if err != nil {
+		return report, err
+	}
+	if err := b.Services.Remove(spec.Label); err != nil {
+		return report, fmt.Errorf("stopping the service for %q: %w", entry.Name, err)
+	}
+	if err := b.Services.Ensure(spec.Label, spec); err != nil {
+		return report, fmt.Errorf("starting the service for %q: %w", entry.Name, err)
 	}
 	return b.Probe(entry), nil
 }

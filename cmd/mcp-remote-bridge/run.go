@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/lozit/mcp-remote-bridge/internal/bridge"
 	"github.com/lozit/mcp-remote-bridge/internal/cloudflared"
@@ -324,4 +325,91 @@ func runSetup(args []string) (int, error) {
 	fmt.Printf("       access_client_id     = %q\n", token.ClientID)
 	fmt.Printf("       access_client_secret = %q\n", AccessSecretRef)
 	return exitOK, nil
+}
+
+// defaultLogLines is how much of a log `logs` shows without being asked.
+const defaultLogLines = 50
+
+// runLogs prints the tail of one entry's proxy log.
+//
+// It always prints the path, even when the file is missing or empty: "there is
+// nothing to show" and "you are looking in the wrong place" are different
+// problems, and the path is what tells them apart.
+func runLogs(args []string) (int, error) {
+	name, configPath, err := parseEntryArgs("logs", args)
+	if err != nil {
+		return exitPrecondition, err
+	}
+	if name == "" {
+		return exitPrecondition, fmt.Errorf("logs needs an entry name")
+	}
+	cfg, path, err := loadConfig(configPath)
+	if err != nil {
+		return exitPrecondition, err
+	}
+	b, err := assemble(cfg, path)
+	if err != nil {
+		return exitPrecondition, err
+	}
+	if _, err := cfg.Entry(name); err != nil {
+		return exitPrecondition, err
+	}
+
+	logPath := b.LogPath(name)
+	fmt.Fprintf(os.Stderr, "%s\n\n", logPath)
+
+	data, err := os.ReadFile(logPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// Not an error: a service that never started writes nothing, and
+			// saying so beats a bare "no such file".
+			fmt.Fprintln(os.Stderr, "no log yet — the service may never have started; try `status`")
+			return exitOK, nil
+		}
+		return exitPrecondition, fmt.Errorf("reading %s: %w", logPath, err)
+	}
+
+	lines := strings.Split(strings.TrimRight(string(data), "\n"), "\n")
+	if len(lines) == 1 && lines[0] == "" {
+		fmt.Fprintln(os.Stderr, "the log is empty")
+		return exitOK, nil
+	}
+	if len(lines) > defaultLogLines {
+		lines = lines[len(lines)-defaultLogLines:]
+	}
+	fmt.Println(strings.Join(lines, "\n"))
+	return exitOK, nil
+}
+
+// runRestart bounces one entry's service and re-probes it.
+//
+// It touches the service only: the hostname, ingress rule and DNS record are
+// left alone, so restarting never risks the published name.
+func runRestart(args []string) (int, error) {
+	name, configPath, err := parseEntryArgs("restart", args)
+	if err != nil {
+		return exitPrecondition, err
+	}
+	if name == "" {
+		return exitPrecondition, fmt.Errorf("restart needs an entry name: restarting everything is never implicit")
+	}
+	cfg, path, err := loadConfig(configPath)
+	if err != nil {
+		return exitPrecondition, err
+	}
+	b, err := assemble(cfg, path)
+	if err != nil {
+		return exitPrecondition, err
+	}
+	entry, err := cfg.Entry(name)
+	if err != nil {
+		return exitPrecondition, err
+	}
+
+	report, err := b.RestartService(entry)
+	if err != nil {
+		return exitPrecondition, err
+	}
+	printReport(os.Stdout, report)
+	return exitCodeFor([]bridge.HealthReport{report}), nil
 }

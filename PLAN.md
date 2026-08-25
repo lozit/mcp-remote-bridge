@@ -139,6 +139,14 @@ Each gets triaged later → a **decision** (ADR), a **build** (PRD), a **milesto
 - [ ] Homebrew tap — is there one for v0.1, and where does it live?
 - [ ] Security contact / GitHub private advisory, before the repo gets any users
 
+- [x] `logs` and `restart` — **done**, verified against a real entry: the pid changed and the
+      ingress was untouched. `restart` reuses the ServiceManager's Remove + Ensure rather than a
+      new seam method — restarting is not a new capability, and adding to the three interfaces
+      needs an ADR that nothing here earns.
+- [ ] `[supervised]` — **Cobra**, per `SPEC-config-cli.md`. Seven commands are now hand-parsed;
+      that is the point where the ergonomics (`--help` per command, shell completion) start to
+      outweigh a second dependency. Needs its own ADR — ADR 0005 explicitly does not pre-approve it.
+
 ## Next — ADR 0007, the tool owns the Access configuration
 
 - [x] `setup` — **done**. Creates the Access service token once and puts its secret straight into

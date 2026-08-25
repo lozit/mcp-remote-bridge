@@ -69,6 +69,10 @@ func main() {
 		code, err = runDoctor(args)
 	case "setup":
 		code, err = runSetup(args)
+	case "logs":
+		code, err = runLogs(args)
+	case "restart":
+		code, err = runRestart(args)
 	case "-h", "--help", "help":
 		usage()
 		return
@@ -249,6 +253,8 @@ func usage() {
   apply [name]        reconcile the machine to the config (idempotent)
   status [name]       probe every entry and change nothing
   remove <name>       tear one entry down; never implicit
+  logs <name>         show the tail of that entry's proxy log
+  restart <name>      bounce that entry's service; leaves the hostname alone
   doctor              check the preconditions; changes nothing
   setup               create the Access service token, once
   set-secret <ref>    store a secret from a masked prompt
