@@ -105,3 +105,33 @@ func TestFindServiceToken(t *testing.T) {
 		t.Errorf("FindServiceToken matched the wrong name: %v", got)
 	}
 }
+
+// Cloudflare allows duplicate names. Picking one silently pairs a client id
+// with a secret that belongs to the other — observed on a real account, and it
+// authenticates as a 403 long after being written into a config.
+func TestFindServiceTokenRefusesAnAmbiguousName(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"success":true,"errors":[],"result":[
+			{"id":"t1","name":"mcp-remote-bridge","client_id":"first.access"},
+			{"id":"t2","name":"mcp-remote-bridge","client_id":"second.access"}]}`))
+	}))
+	defer srv.Close()
+
+	e := New("acc", "zone", "tun", "test-token")
+	e.BaseURL = srv.URL
+
+	got, err := e.FindServiceToken("mcp-remote-bridge")
+
+	if err == nil {
+		t.Fatalf("an ambiguous name resolved to %v instead of failing", got)
+	}
+	if got != nil {
+		t.Error("a token was returned alongside the error")
+	}
+	for _, id := range []string{"first.access", "second.access"} {
+		if !strings.Contains(err.Error(), id) {
+			t.Errorf("the error should name every candidate so the user can act; %s missing from: %v", id, err)
+		}
+	}
+}

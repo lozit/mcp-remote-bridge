@@ -12,6 +12,29 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## A name is not an identifier unless the system enforces it
+
+**Why**: Cloudflare allows two Access service tokens to share a name. `setup` looked one up by
+name, got the first match, and printed its client id next to a secret belonging to the **other**
+— a pair that authenticates as `403`, long after being copied into a config, with nothing at the
+time of the mistake to suggest it.
+
+Measured on a real account: two tokens named `mcp-remote-bridge`, and the stored secret paired
+with the second. The first returned `403`, the second `200`. The lookup had a 50% chance of being
+right and no way to know.
+
+The fix is not better matching, it is refusing: ambiguity has no correct answer, so the caller is
+told and the candidates are listed.
+
+**When to apply**: whenever you look something up by a human-chosen name — a token, a tag, a
+container, a DNS record, a branch. Ask whether the system *enforces* uniqueness or merely makes
+duplicates unlikely. If it does not enforce it, a lookup returning one match is a guess. Handle
+`len(matches) > 1` explicitly, and prefer erroring to picking.
+
+Corollary on symptoms: the mismatch surfaced as an authentication failure at a completely
+different time and place from the mistake. Errors that travel like that are worth spending a
+guard on at the point they are created.
+
 ## Wait for the state you depend on, not for a symptom of it
 
 **Why**: a drift-repair test booted a launchd job out, waited for the entry to become

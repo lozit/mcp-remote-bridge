@@ -3,6 +3,7 @@ package cloudflared
 import (
 	"fmt"
 	"net/http"
+	"strings"
 )
 
 // ServiceToken is a Cloudflare Access service token.
@@ -22,6 +23,13 @@ type ServiceToken struct {
 // FindServiceToken returns the token with the given name, or nil.
 //
 // The returned token never carries a Secret: listing does not include it.
+//
+// Cloudflare allows two tokens to share a name, and that is refused here rather
+// than resolved by picking one. Observed on a real account: two tokens named
+// alike, a stored secret belonging to the second, and the first one returned —
+// a client id and a secret that do not go together, which authenticate as a 403
+// long after being written into a config. Ambiguity has no correct answer, so
+// the caller is told instead of guessed at.
 func (e *Exposer) FindServiceToken(name string) (*ServiceToken, error) {
 	var got struct {
 		Result []ServiceToken `json:"result"`
@@ -29,12 +37,28 @@ func (e *Exposer) FindServiceToken(name string) (*ServiceToken, error) {
 	if err := e.call(http.MethodGet, "/accounts/"+e.AccountID+"/access/service_tokens", nil, &got); err != nil {
 		return nil, fmt.Errorf("listing service tokens: %w", err)
 	}
-	for i := range got.Result {
-		if got.Result[i].Name == name {
-			return &got.Result[i], nil
+
+	var matches []ServiceToken
+	for _, tok := range got.Result {
+		if tok.Name == name {
+			matches = append(matches, tok)
 		}
 	}
-	return nil, nil
+	switch len(matches) {
+	case 0:
+		return nil, nil
+	case 1:
+		return &matches[0], nil
+	default:
+		ids := make([]string, 0, len(matches))
+		for _, m := range matches {
+			ids = append(ids, m.ClientID)
+		}
+		return nil, fmt.Errorf("%d service tokens are named %q (%s); "+
+			"a stored secret belongs to exactly one of them and there is no way to tell which from here — "+
+			"delete the ones you do not use in the dashboard",
+			len(matches), name, strings.Join(ids, ", "))
+	}
 }
 
 // CreateServiceToken creates a token and returns it with its secret.

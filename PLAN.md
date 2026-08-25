@@ -145,10 +145,15 @@ Each gets triaged later → a **decision** (ADR), a **build** (PRD), a **milesto
       the keychain, never through a terminal or a clipboard. Idempotent, and honest about the one
       state it cannot repair: a token that exists whose secret is not stored cannot be recovered,
       so it says to delete and re-run rather than creating a second indistinguishable credential.
-- [ ] `[supervised]` — **API latency**: every Cloudflare call took ~30s from a Go binary in the
-      agent's sandbox while curl answered in 1s. `RequestTimeout` raised to 90s so the timeout
-      stops a hang rather than enforcing a latency budget. Confirm on a real terminal whether the
-      latency is environmental before investigating further.
+- [x] API latency explained: a freshly compiled binary triggers a macOS authorisation prompt, and
+      the symptom in code is a **network timeout**, not a message. Approved, the same call took 6s.
+      `RequestTimeout` stays at 90s — it exists to stop a hang, not to enforce a latency budget.
+
+## Operational — the maintainer's own infrastructure, not this codebase
+
+- [ ] **Delete the duplicate service token** `75f79582b4962feb23f68f3856561216.access`. Two tokens
+      are named `mcp-remote-bridge`; the stored secret pairs with `9733deae…` (verified: `200`
+      against a guarded hostname, against `403` for the other).
 - [x] The Exposer creates the Access application on the hostname, reusing the policy named by
       `[infra] access_policy_id`. Guards **before** publishing and unguards **last** — both
       orderings mutation-tested, since they are the security property, not the API calls.
