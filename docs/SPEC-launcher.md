@@ -172,6 +172,9 @@ time and passed to `__launch` explicitly rather than looked up at launch.
 
 Two consequences for the reconciler:
 
+- **Exit 5 is not proof.** It means "already there", which is usually true — and is also what
+  comes back when a label is on its way out after a concurrent bootout, leaving nothing loaded.
+  `Ensure` waits for the label to actually appear rather than trusting the code.
 - **`bootstrap` is not idempotent.** "Just bootstrap it" is not an implementation of `Ensure`:
   it fails on the second call. `Ensure` reads the state first, and only boots out and back in
   when the definition actually changed.

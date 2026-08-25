@@ -123,14 +123,33 @@ func (m *Manager) Ensure(label string, spec bridge.ServiceSpec) error {
 	}
 
 	out, err := run("launchctl", "bootstrap", m.domain(), path)
-	if err != nil {
-		if code(err) == exitAlreadyBootstrapped {
-			// Raced with something else loading it. The desired state holds.
-			return nil
-		}
+	if err != nil && code(err) != exitAlreadyBootstrapped {
 		return fmt.Errorf("bootstrapping %s: %w (%s)", label, err, out)
 	}
-	return nil
+
+	// Verify the effect, not the exit code. Exit 5 means "already there", which
+	// is usually true — but it is also what comes back when the label is on its
+	// way OUT after a concurrent bootout, and then nothing ends up loaded. That
+	// race made TestEnsureExposedRepairsDrift fail about one run in ten.
+	return m.waitLoaded(label)
+}
+
+// waitLoaded blocks until the label is present in the domain.
+func (m *Manager) waitLoaded(label string) error {
+	deadline := time.Now().Add(LoadTimeout)
+	for {
+		state, err := m.Status(label)
+		if err != nil {
+			return err
+		}
+		if state.Loaded {
+			return nil
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("%s is still not loaded %v after being bootstrapped", label, LoadTimeout)
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
 }
 
 // UnloadTimeout bounds how long Remove waits for a booted-out service to
@@ -142,6 +161,9 @@ func (m *Manager) Ensure(label string, spec bridge.ServiceSpec) error {
 // waits for the effect rather than trusting the write. The bound is generous
 // because launchd gives a job an exit timeout of its own before killing it.
 const UnloadTimeout = 15 * time.Second
+
+// LoadTimeout bounds how long Ensure waits for a bootstrapped service to appear.
+const LoadTimeout = 15 * time.Second
 
 // Remove unloads the service and deletes its definition.
 //

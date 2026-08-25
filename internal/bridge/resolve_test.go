@@ -1,6 +1,8 @@
 package bridge
 
 import (
+	"errors"
+	"net"
 	"strings"
 	"testing"
 )
@@ -32,6 +34,16 @@ func TestProbeHostnameResolvesPassesForANameThatResolves(t *testing.T) {
 func TestProbeHostnameResolvesFailsForANameThatDoesNot(t *testing.T) {
 	const nowhere = "mcp-remote-bridge-nothing-here.invalid"
 
+	// Positive control, in the same run and against the same dependency.
+	//
+	// Without it this test passes just as happily when the RESOLVER is
+	// unreachable as when .invalid genuinely NXDOMAINs — the probe would look
+	// correct on a machine where nothing resolves at all. Asserting a failure is
+	// only as strong as the proof that the dependency was working and said no.
+	if control := ProbeHostnameResolves("localhost"); !control.OK {
+		t.Skipf("no working resolver in this environment (%v); a negative DNS assertion would prove nothing", control.Err)
+	}
+
 	got := ProbeHostnameResolves(nowhere)
 
 	if got.Name != CheckHostnameResolves {
@@ -45,6 +57,18 @@ func TestProbeHostnameResolvesFailsForANameThatDoesNot(t *testing.T) {
 	}
 	if !strings.Contains(got.Detail, nowhere) {
 		t.Errorf("Detail = %q, want it to name what was looked up", got.Detail)
+	}
+
+	// The specific error, not merely "an error": a timeout, a refused resolver
+	// and a genuine NXDOMAIN are three different diagnoses, and only the last
+	// one is what this test claims to observe.
+	var dnsErr *net.DNSError
+	if !errors.As(got.Err, &dnsErr) {
+		t.Fatalf("Err = %v, want it to unwrap to a *net.DNSError", got.Err)
+	}
+	if !dnsErr.IsNotFound {
+		t.Errorf("IsNotFound = false (timeout=%v, temporary=%v); the name was not observed to be absent, the lookup merely failed",
+			dnsErr.IsTimeout, dnsErr.IsTemporary)
 	}
 }
 
