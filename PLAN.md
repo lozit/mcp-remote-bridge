@@ -98,12 +98,13 @@ seams plus `Entry` / `HealthReport` are declared with stubs returning
       while Guarded and Open are both conclusions that end the wait.
 - [x] `[infra]` reshaped: `account_id`, `zone_id`, `tunnel_id`, `api_token` (validated as a
       secret reference), `tunnel` removed.
-- [ ] `[supervised]` — **bound `ProbeHostnameResolves` with an explicit DNS timeout.** It is the
-      only probe in the package not bounded by one (`ProxyDialTimeout`, `MCPProbeTimeout`), so it
-      inherits whatever the system resolver decides — and `health.go` states the house rule: a probe
-      that can hang is a probe that never reports. Shape (`net.Resolver` + `context.WithTimeout`, no
-      new parameter) is mechanical; the *value* is the judgement call, which is why the loop was not
-      allowed to guess it.
+- [x] **`ProbeHostnameResolves` bounded — done.** `DNSLookupTimeout = 5s`, via a `net.Resolver`
+      and `context.WithTimeout`; the public signature is unchanged. Two judgement calls the loop was
+      not allowed to make: the *value* (generous against a working resolver, which answers in
+      milliseconds, and short against a human waiting), and the fact that a deadline now reports
+      itself as `no answer within 5s` rather than folding into a generic error — a timeout and an
+      NXDOMAIN send the reader to different places. Verified by mutation: with the bound removed the
+      test hangs until `go test` panics; with it, green.
 
 - [x] `doctor` — **done**. Checks mcp-proxy, cloudflared, a *running* connector, this binary's
       recorded path, the config, the API token and the Access service token. Never uses a

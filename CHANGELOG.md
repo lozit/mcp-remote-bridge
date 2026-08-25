@@ -9,6 +9,10 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- `ProbeHostnameResolves` is now bounded by `DNSLookupTimeout` (5s). It was the only probe
+  inheriting whatever the system resolver decided, against the house rule that a probe which can
+  hang is a probe that never reports. A deadline is reported as such rather than as a generic
+  lookup failure, since a timeout and an NXDOMAIN point at different things.
 - A cross-cutting test for the secret path: every artefact the tool produces is built and the
   secret value must appear in exactly one of them, the process environment. The per-invariant
   tests can all pass while a *new* artefact leaks — that is the surface this covers.

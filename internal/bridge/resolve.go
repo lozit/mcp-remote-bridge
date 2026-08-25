@@ -1,10 +1,27 @@
 package bridge
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
+	"time"
 )
+
+// DNSLookupTimeout bounds the lookup in ProbeHostnameResolves.
+//
+// Every other probe is bounded; this one was not, and it is the one most
+// exposed to a resolver that accepts the query and never answers. Unbounded, a
+// single unreachable nameserver turns `apply` into a command that hangs with no
+// output — the failure mode the health report exists to replace. The value is
+// generous next to a working resolver (milliseconds) and short next to a human
+// waiting.
+const DNSLookupTimeout = 5 * time.Second
+
+// resolver is the resolver the probe uses. It is a variable so a test can point
+// it at a nameserver that never answers, which is the only way to observe that
+// the bound is enforced rather than merely written.
+var resolver = &net.Resolver{}
 
 // ProbeHostnameResolves checks whether hostname resolves in DNS.
 //
@@ -16,6 +33,10 @@ import (
 // The returned Check always names the hostname in Detail, whether it passed or
 // failed: a red result that does not say what it looked up is not actionable.
 func ProbeHostnameResolves(hostname string) Check {
+	return probeHostnameResolvesWithin(hostname, DNSLookupTimeout)
+}
+
+func probeHostnameResolvesWithin(hostname string, timeout time.Duration) Check {
 	check := Check{Name: CheckHostnameResolves, Detail: hostname}
 
 	// An empty hostname is a caller bug, not a DNS verdict. Reporting it as "does
@@ -27,8 +48,17 @@ func ProbeHostnameResolves(hostname string) Check {
 		return check
 	}
 
-	addrs, err := net.LookupHost(hostname)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	addrs, err := resolver.LookupHost(ctx, hostname)
 	if err != nil {
+		// A timeout and a genuine NXDOMAIN send the reader to different places,
+		// so the deadline says so rather than hiding inside a generic i/o error.
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			check.Err = fmt.Errorf("resolving %s: no answer within %s", hostname, timeout)
+			return check
+		}
 		check.Err = fmt.Errorf("resolving %s: %w", hostname, err)
 		return check
 	}
