@@ -62,3 +62,31 @@ A task the loop can't verify its way out of, or that hides a decision, will be p
       inject arguments; do not add a TOML/plist library (a dependency needs an ADR); do not
       touch `bridge.ServiceSpec`, `KeepAlivePolicy`, or any file outside
       `internal/launchd/plist.go`.
+
+- [ ] **Implement `RetryCheck` in `internal/bridge/retry.go`.**
+      Acceptance test: `go test ./internal/bridge/ -run TestRetryCheck` → exit 0 = green.
+      Behaviour: call `probe`, and while it returns a failing `Check`, sleep for `interval` via
+      the injected `sleep` function and call it again, until it passes or the accumulated wait
+      would exceed `timeout`. Return the **last** `Check` the probe produced — never a synthetic
+      timeout error: a red result must keep the probe's own `Name`, `Detail` and `Err`, or it
+      stops saying where it looked. `probe` is called **at least once**, even when `timeout` is
+      zero, since a wait that never probes reports on nothing. A probe that passes on the first
+      call must not sleep at all.
+      Out of scope: do not call `time.Sleep` directly (the injected `sleep` is what makes the
+      test instant and deterministic); do not add backoff, jitter or a context parameter; do not
+      change `Check`, `HealthReport`, or wire this into `EnsureExposed` yet — that is a separate,
+      supervised step; do not touch any file other than `retry.go`.
+
+- [ ] **Implement `ProbeHostnameResolves` in `internal/bridge/resolve.go`.**
+      Acceptance test: `go test ./internal/bridge/ -run TestProbeHostnameResolves` → exit 0 =
+      green.
+      Behaviour: look `hostname` up in DNS with the standard library. Return a `Check` with
+      `Name: CheckHostnameResolves`; `OK` true when the lookup returns at least one address and
+      false otherwise; `Err` nil on success and carrying the lookup error on failure; `Detail`
+      naming the hostname that was looked up **in both cases** — a red result that does not say
+      what it looked up is not actionable. An empty hostname is a caller bug: fail with an error
+      that says so, rather than reporting it as a name that does not resolve.
+      Out of scope: do not resolve through the Exposer or any Cloudflare API — this is a plain
+      DNS lookup; do not add a resolver-injection parameter (the tests need none); do not
+      implement any other probe; do not change `Check` or `HealthReport`; do not touch any file
+      other than `resolve.go`.

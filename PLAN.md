@@ -20,27 +20,18 @@ seams plus `Entry` / `HealthReport` are declared with stubs returning
 
 **Decision to settle** — blocks nothing today, must land before Milestone 2 ships
 
-- [ ] `[supervised]` — *Milestone 2 work, unblocked now that ADR 0001 is Accepted.* Implement
-      the access-policy check: send `initialize` **without credentials**; a success proves the
-      door is open → `apply` fails unless `--allow-public`. Ambiguous → warn. Never read a
-      generic failure as "protected" — only a positive auth signature (302 to an IdP, a 403
-      from Cloudflare) counts. Requires Cloudflare Access **service-token support** in
-      the probe first, or a correctly guarded user gets a permanently red `status`.
-      Decide where `--allow-public` is recorded: a CLI flag vanishes into shell history, the
-      config file keeps the choice visible.
+- [x] The access-policy check — **done**. `CheckAccessPolicy` + `enforceAccessPolicy`, verified
+      live on both hostnames. `allow_public` lives in the config, not a CLI flag, so the decision
+      stays visible in a reviewable file rather than in one person's shell history.
 
 **Milestone 1 — the primitive** (see `docs/ROADMAP.md`)
 
-- [ ] `[supervised]` — *`proxy_listening` is **done** (delivered by the loop, 2026-08-20);
-      these three remain.* `hostname_resolves` and `hostname_responds` need real DNS/network (or an
-      injected resolver, which is an unmade design decision); `service_loaded` delegates to
-      `ServiceManager.Status`, so a loop would have to author its own fake — writer = maker.
-      Remaining probes for `HealthReport`: `hostname_resolves`, `hostname_responds`,
-      `service_loaded`.
-      **`service_loaded` is one decision away from being loop-safe**: it is structurally clean
-      (call `ServiceManager.Status`, map to a `Check`, testable against a fake), but what should
-      it report when the service is `Loaded` but not `Running` — crashed, or throttled after a
-      failure? Decide that and it can be looped.
+- [x] `service_loaded` and `hostname_responds` — **done**, both in `Probe`. The
+      Loaded-but-not-Running question resolved itself: `Running` is derived from the presence of
+      a pid, and the check reports the last exit code so a caller learns why it died.
+- [~] `hostname_resolves` — split into `loop/backlog.md` as a `[loop]` task, with a red acceptance
+      test frozen in `internal/bridge/resolve_test.go`. The "injected resolver" concern was
+      unfounded: `localhost` and the reserved `.invalid` TLD make it testable without one.
 - [x] Access service tokens + the `hostname_responds` probe — **implemented**. Still to verify:
       the two header names come from documentation, not measurement (the only such case in this
       codebase). The first live run against a guarded hostname is the verification.
@@ -85,24 +76,28 @@ seams plus `Entry` / `HealthReport` are declared with stubs returning
       added, re-ensured (no write — confirmed by the `version` counter not moving), then removed,
       with the configuration byte-identical before and after and no DNS residue. All three seams
       have now touched reality.
+- [x] Realize #3: two tasks partitioned to `[loop]` (`RetryCheck`, `ProbeHostnameResolves`) with
+      red acceptance tests frozen; six PLAN entries found already done and checked off rather than
+      partitioned (2026-08-21)
 - [x] **The complete walking skeleton runs** (2026-08-21). `apply` on a throwaway entry against
       the real tunnel: service loaded, proxy listening, `mcp_responds` and `hostname_responds`
       both reaching `tools/list` through Access with service tokens. `remove` restored the
       configuration exactly — no Access application, DNS record or launchd service left behind.
-- [ ] **A new hostname is not reachable immediately**: measured ~2 minutes between `apply` and the
-      edge serving it (TCP connect fails outright until then, before TLS, so it is not a
-      certificate issue). `apply` reports it red and warns that it cannot confirm the hostname is
-      guarded — correct but unhelpful. It should wait and re-probe: "hostname added but DNS not
-      yet propagated" is a named failure mode in the spec, not a real failure.
-- [ ] `[supervised]` — config: `[infra]` gains `account_id`, `zone_id`, `tunnel_id`, `api_token`
-      and loses `tunnel`; the parser must validate `api_token` as a secret reference like any
-      other. `doctor` checks the new preconditions (connector running, token present — never
-      tested with a write).
+- [~] Waiting for a freshly published hostname — split into `loop/backlog.md` as `RetryCheck`,
+      with a red acceptance test frozen in `internal/bridge/retry_test.go`.
+- [ ] `[supervised]` — **wire `RetryCheck` into `EnsureExposed`** once it exists: which checks
+      deserve waiting (only `hostname_responds`, or the public ones generally) and whether
+      `status` should wait at all are product choices, not mechanical ones. `status` almost
+      certainly should NOT: it must stay a fast, side-effect-free read.
+- [x] `[infra]` reshaped: `account_id`, `zone_id`, `tunnel_id`, `api_token` (validated as a
+      secret reference), `tunnel` removed.
+- [ ] `[supervised]` — `doctor` checks the preconditions (connector running, token present, never
+      tested with a write). The command does not exist yet, and its shape is a design choice.
 - [x] `ensure_exposed` / `remove_exposed` — **done for the local half**: the walking skeleton
       runs end to end against real launchd, real mcp-proxy and a real keychain, with the Exposer
       left out. Remaining: wire the Exposer in once the Cloudflare credentials exist.
-- [ ] `[supervised]` — `remove_exposed` through a **real hostname**: verify the public name
-      stops answering, not just the local port. Needs the tunnel.
+- [x] `remove_exposed` verified through a real hostname (2026-08-21): the tunnel configuration
+      came back byte-identical, with no Access application, DNS record or launchd service left.
 - [ ] `[supervised]` — *the task **is** the oracle. A loop writing these would author its
       own grading criteria (writer = maker) and the back pressure disappears. These are the
       tests to write by hand, or in a reflection session — never in the loop.* Tests for the
@@ -143,8 +138,8 @@ Each gets triaged later → a **decision** (ADR), a **build** (PRD), a **milesto
 - [ ] `doctor` reports the Portal's MCP server configuration as an outstanding manual step —
       `/access/mcp_servers` answers `Unable to authenticate request`, so the route exists but is
       closed to API tokens while Portals are Beta. Re-test when the Beta lifts.
-- [ ] After applying, probe **with** credentials: a green `hostname_responds` is the proof the
-      Access configuration works. The API accepting the write is not.
+- [x] Probing with credentials after applying — **done and proven live**: `hostname_responds`
+      reached `tools/list` through Access on a throwaway entry.
 
 ## Operational — the maintainer's own infrastructure, not this codebase
 
