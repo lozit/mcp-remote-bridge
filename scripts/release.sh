@@ -18,6 +18,19 @@ if [ -z "$CODESIGN_IDENTITY" ]; then
 fi
 echo "signing identity: $CODESIGN_IDENTITY"
 
+# GoReleaser picks its forge from whichever token it finds in the environment,
+# and a GITLAB_TOKEN sitting there from another project wins. That is not a
+# preference it announces loudly: the first run of this script reported
+# "using token from $GITLAB_TOKEN" while publishing a GitHub project. Pin the
+# forge by clearing the others and supplying GitHub's explicitly.
+unset GITLAB_TOKEN GITEA_TOKEN
+GITHUB_TOKEN="${GITHUB_TOKEN:-$(gh auth token 2>/dev/null || true)}"
+export GITHUB_TOKEN
+if [ -z "$GITHUB_TOKEN" ]; then
+  echo "no GitHub token: run 'gh auth login' or set GITHUB_TOKEN" >&2
+  exit 1
+fi
+
 if [ "${1:-}" = "--dry" ]; then
   exec goreleaser release --snapshot --clean --skip=publish,sign
 fi

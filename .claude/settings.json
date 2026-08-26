@@ -1,0 +1,32 @@
+{
+    "defaultMode": "auto",
+    "permissions": {
+      "allow": [
+        "Bash(go build ./...)",
+        "Bash(go test ./...)",
+        "Bash(go test -run *)",
+        "Bash(go vet ./...)",
+        "Bash(go fmt ./...)",
+        "Bash(gofmt *)",
+        "Bash(go mod *)",
+        "Bash(git status)",
+        "Bash(git diff *)",
+        "Bash(git log *)",
+        "Bash(git add *)",
+        "Bash(git commit *)",
+        "Grep",
+        "Read"
+      ],
+      "deny": [
+        "Bash(rm -rf *)",
+        "Read(.env)",
+        "Read(.env.*)",
+        "Read(**/*.pem)",
+        "Bash(security *)"
+      ],
+      "ask": [
+        "Bash(git push *)",
+        "Bash(gh *)"
+      ]
+    }
+  }
