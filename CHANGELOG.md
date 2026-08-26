@@ -8,7 +8,21 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- The release is now cut with **GoReleaser**, run locally
+  ([ADR 0011](docs/decisions/0011-goreleaser-and-a-homebrew-tap.md)), and publishes a **Homebrew
+  cask** alongside the GitHub archives. This reverses ADR 0009's rejection of GoReleaser on new
+  information — a tap is wanted, and updating one is the part of a release most easily got
+  quietly wrong by hand. Signing and notarisation are unchanged and still local: the Developer
+  ID private key never leaves a machine the maintainer controls.
+- `make release` now delegates to `scripts/release.sh`; the Makefile no longer builds, signs or
+  notarises on its own. Two release paths that could drift apart silently is precisely what
+  ADR 0011 forbids.
+
 ### Added
+- A CI job that builds and tests on `macos-latest` for every tag and pull request. It does not
+  sign, notarise or publish — it catches the one risk a local release cannot, "it only compiles
+  on my machine", and asserts the non-darwin compile guard still refuses.
 - A coverage guard over `doctor`: every check it reports must be able to go red, and every red
   check must carry an error and a hint. Each check already had its own failure test — this one
   is aimed at the *next* check, since one added with no failing path is a line that always

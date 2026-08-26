@@ -1,0 +1,62 @@
+# The safety net, and deliberately nothing more.
+#
+# The release is cut locally, because the Developer ID private key stays on a
+# machine the maintainer controls (ADR 0011). This workflow therefore does NOT
+# sign, notarise or publish anything — it exists to catch the one risk a local
+# release cannot: "it only compiles on my machine".
+#
+# It must never grow a signing step. If provenance is ever wanted, ADR 0011
+# says how: one build path, not two reconciled by reproducibility.
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # CI's order, so a green local `make check` means the same thing as a
+      # green run here.
+      - name: gofmt
+        run: test -z "$(gofmt -l .)" || { echo "gofmt needed:"; gofmt -l .; exit 1; }
+
+      - name: vet
+        run: go vet ./...
+
+      - name: test
+        run: go test ./...
+
+      # The tool is darwin-only on purpose, and a compile-time guard enforces
+      # it. Asserting the guard still bites belongs here: it is the claim most
+      # likely to rot silently, since nothing else in the suite builds for
+      # another OS.
+      - name: the non-darwin guard still refuses
+        run: |
+          if GOOS=linux GOARCH=amd64 go build -o /dev/null ./cmd/mcp-remote-bridge 2>/dev/null; then
+            echo "the tool built for linux; it would install there and fail at the first apply"
+            exit 1
+          fi
+          echo "linux build refused, as intended"
+
+      - name: it builds for both release targets
+        run: |
+          for arch in arm64 amd64; do
+            GOOS=darwin GOARCH=$arch CGO_ENABLED=0 \
+              go build -trimpath -o /dev/null ./cmd/mcp-remote-bridge
+            echo "darwin/$arch ok"
+          done

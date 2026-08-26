@@ -13,9 +13,9 @@
 
 ```bash
 # The exact commands of a normal release, in order:
-git tag v0.1.0 && git push --follow-tags   # the tag is what VERSION comes from
-make release                              # check -> build+sign -> notarise -> checksums
-gh release create v0.1.0 dist/*.zip dist/SHA256SUMS
+git tag v0.2.0 && git push --follow-tags   # the tag is what the version comes from
+make release                              # GoReleaser: test -> build+sign -> archive ->
+                                          # notarise -> checksums -> GitHub release -> tap
 ```
 
 ## Environments
@@ -30,8 +30,19 @@ This is a CLI, not a service — there is no staging or production *of the tool*
 | Homebrew | — | **not for v0.1** (ADR 0009) | — |
 | `go install` | the same tag | proxy.golang.org | `go install github.com/lozit/mcp-remote-bridge@latest` |
 
-**Settled by [ADR 0009](docs/decisions/0009-release-is-hand-rolled-and-darwin-only.md)**: the
-release is hand-rolled (`make release`), darwin-only, and there is no Homebrew tap in v0.1.
+**Settled by [ADR 0009](docs/decisions/0009-release-is-hand-rolled-and-darwin-only.md)** and
+revised by [ADR 0011](docs/decisions/0011-goreleaser-and-a-homebrew-tap.md): darwin-only, signed
+and notarised, cut **locally** from a machine holding the Developer ID — never in CI. Since v0.2
+the tool is GoReleaser rather than a hand-rolled matrix, because a Homebrew tap is wanted and
+updating one is the thing GoReleaser does that a Makefile does not.
+
+**There is exactly one release path.** `make release` delegates to `scripts/release.sh`, which
+runs GoReleaser. The Makefile no longer builds, signs or notarises on its own: two paths that
+could drift apart silently is the failure ADR 0011 exists to prevent.
+
+**A CI job builds and tests on `macos-latest` for every tag** (`.github/workflows/build.yml`).
+It does not sign, notarise or publish, and must never grow a step that does — it exists only to
+catch "it compiles on my machine".
 
 **There is no linux binary, and that is not an omission.** The tool compiles for linux but
 cannot run there — it drives `launchctl` and `/usr/bin/security`. A compile-time guard
@@ -74,6 +85,10 @@ than an `exec: not found` at the user's first `apply`.
   answers it properly. `make notarize` submits each archive and then **verifies the effect** on
   the extracted binary, because a successful submission is not proof that the artefact you are
   about to publish is notarised. See the next two bullets for which check, and which not.
+- **Homebrew does not exempt you from notarisation here.** A *formula* installs by `curl` and
+  sets no quarantine attribute — but Homebrew moved binary-only formulas to **casks**, and a
+  cask *does* quarantine what it downloads. So the tap needs a notarised binary just as the
+  browser-downloaded archives do.
 - **The ticket is not stapled, and cannot be.** Stapling needs a bundle (`.app`, `.dmg`,
   `.pkg`) to write the ticket into; a bare executable has nowhere to put it. Gatekeeper
   resolves the ticket online on first run instead. Consequence to accept: the very first

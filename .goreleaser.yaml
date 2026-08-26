@@ -1,0 +1,78 @@
+# Release configuration. Run locally on the maintainer's laptop — never in CI,
+# because the Developer ID private key stays on a machine we control. See
+# ADR 0011 for why, and for the rule about never splitting the build path.
+version: 2
+
+project_name: mcp-remote-bridge
+
+before:
+  hooks:
+    - go mod tidy
+    - gofmt -l .
+    - go vet ./...
+    - go test ./...
+
+builds:
+  - id: mcp-remote-bridge
+    main: ./cmd/mcp-remote-bridge
+    env:
+      - CGO_ENABLED=0
+    # darwin only, and deliberately: the tool drives launchctl and the macOS
+    # keychain, so any other target would install and then fail at first use.
+    # cmd/mcp-remote-bridge/platform_other.go makes that a compile error.
+    goos: [darwin]
+    goarch: [arm64, amd64]
+    flags: [-trimpath]
+    ldflags:
+      - -X main.version={{ .Version }}
+    hooks:
+      post:
+        # Signing is a functional requirement here, not a trust gesture: macOS
+        # grants keychain access BY BINARY IDENTITY, and this tool reads a
+        # secret on every `apply`. An ad-hoc signature changes with the
+        # contents, so it would make every user re-authorise on every update.
+        - cmd: codesign --force --options runtime --timestamp --sign "{{ .Env.CODESIGN_IDENTITY }}" "{{ .Path }}"
+        - cmd: codesign --verify --strict "{{ .Path }}"
+
+archives:
+  - id: default
+    formats: [zip]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files: [LICENSE*, README.md]
+
+checksum:
+  name_template: SHA256SUMS
+
+# `signs` is GoReleaser's generic per-artifact hook. It is used here for
+# notarisation, not GPG: the archives downloaded from GitHub Releases in a
+# browser ARE quarantined by Gatekeeper, so they need a ticket even though
+# Homebrew installs (which set no quarantine) would not.
+signs:
+  - id: notarize
+    artifacts: archive
+    cmd: ./scripts/notarize.sh
+    args: ["${artifact}"]
+    signature: "${artifact}"
+
+release:
+  github:
+    owner: lozit
+    name: mcp-remote-bridge
+  draft: false
+  prerelease: auto
+
+# Homebrew moved binary-only formulas to casks, so this is a cask. That matters
+# for more than syntax: a cask APPLIES the quarantine attribute to what it
+# downloads, unlike a formula. Notarisation is therefore load-bearing on this
+# channel too, not only for browser downloads.
+homebrew_casks:
+  - name: mcp-remote-bridge
+    repository:
+      owner: lozit
+      name: homebrew-tap
+    directory: Casks
+    homepage: https://github.com/lozit/mcp-remote-bridge
+    description: Make a local stdio MCP server reachable from a remote agent
+
+changelog:
+  use: github-native

@@ -1,7 +1,10 @@
 # 0009 — The release is hand-rolled, and darwin-only
 
 **Date**: 2026-08-25
-**Status**: Accepted
+**Status**: Accepted — toolchain and tap superseded by
+[ADR 0011](0011-goreleaser-and-a-homebrew-tap.md) (2026-08-26). Darwin-only, notarised, and
+released from a machine the maintainer controls all still hold; GoReleaser and a Homebrew tap
+were adopted once a tap was actually wanted.
 
 ## Context
 
