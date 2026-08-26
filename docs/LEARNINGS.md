@@ -12,6 +12,30 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## A wildcard DNS record makes `hostname_resolves` a check that cannot fail
+
+**Why**: the v0.1.0 release check was run against `paranoid.foo`, a zone carrying a wildcard
+`*` record. Every name under it resolves — measured: `relcheck-mcp`,
+`ceci-nexiste-pas-du-tout-42` and `xyzzy-quux` all returned the same address before anything was
+created.
+
+So on such a zone `ProbeHostnameResolves` passes for a hostname the tool has never published. It
+reports "resolves" as evidence that a record exists, when it is evidence of nothing — which is
+precisely what rule 2 forbids: *a check that cannot fail is worse than none, because it
+manufactures confidence.*
+
+There is a discriminator, found in the same run: before `apply` the name returned the wildcard's
+address, and after it the Cloudflare edge addresses. So the record's existence IS observable from
+DNS alone — just not by asking whether the name resolves.
+
+**When to apply**: whenever a probe asks "does this name resolve", "does this path exist", "does
+this key have a value" — ask what a *default* would do to it. Wildcards, catch-alls, fallback
+routes and default values all turn an existence check into a tautology. And when verifying a
+deletion on a zone like this, `dig` cannot answer: the authoritative API said the record was gone
+while a cached lookup still returned the edge addresses and the hostname still answered `522`.
+
+---
+
 ## `go run` defeats a per-binary firewall; build once to a stable path
 
 **Why**: three API probes in a row timed out while `git` and `xcrun notarytool` reached the

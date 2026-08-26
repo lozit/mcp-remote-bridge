@@ -14,7 +14,11 @@ seams plus `Entry` / `HealthReport` are declared with stubs returning
 
 ## In progress
 
-- [ ] (nothing yet — pick the first task from "Up next")
+- [ ] **`ProbeHostnameResolves` is a tautology on a wildcard zone** — found by the v0.1.0
+      release check, recorded in `docs/LEARNINGS.md`. Shipped as-is in v0.1.0 knowingly: the
+      deep probe (`hostname_responds`) is what actually establishes the hostname works, and
+      fixing this properly means giving the probe a way to tell the tool's own record apart
+      from a wildcard — which changes its contract and therefore needs an ADR, not a patch.
 
 ## Up next
 

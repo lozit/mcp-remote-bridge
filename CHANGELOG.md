@@ -13,6 +13,15 @@ versions follow [Semantic Versioning](https://semver.org/).
 First release. macOS only, notarised, no Homebrew tap
 ([ADR 0009](docs/decisions/0009-release-is-hand-rolled-and-darwin-only.md)).
 
+Verified with the tagged binary itself against a real tunnel, not on unit tests: `apply`
+published a throwaway MCP behind a guarded hostname (403 + `cf-access-aud` unauthenticated,
+`tools/list` through Access with a service token), the secret reached the MCP process through
+the environment and appeared in no plist and no `argv`, and `remove` left no DNS record, no
+Access application and no tunnel ingress behind.
+
+**Known limitation**: on a DNS zone carrying a wildcard record, the `hostname_resolves` check
+passes for any name and so proves nothing. The deep `hostname_responds` probe is unaffected.
+
 ### Added
 - A security policy at `.github/SECURITY.md`, and private vulnerability reporting enabled on the
   repository. GitHub had been surfacing `docs/SECURITY.md` — a design document marked *pre-code*
