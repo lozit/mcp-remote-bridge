@@ -143,17 +143,21 @@ NOTARY_WAIT ?= 45m
 TICKET_SETTLE_TRIES ?= 20
 TICKET_SETTLE_INTERVAL ?= 15
 
-# And the check has a hard limit worth stating, because it looks like a failure.
-# Measured 2026-08-26 on an arm64 host, both archives Accepted by Apple:
-# the arm64 binary verifies 5/5, the x86_64 one fails 5/5 - same command, same
-# bytes, deterministic either way. The local ticket lookup does not resolve for
-# a foreign architecture here.
+# How long is genuinely unpredictable. Measured 2026-08-26 across one release:
+# ninety seconds in one case, still failing after five minutes in another, and
+# an archive that failed 5/5 for over two hours verified cleanly later with no
+# intervention. Apple's Accepted status is immediate and authoritative; the
+# local lookup catches up on its own schedule.
 #
-# So a failed local check on the NON-native slice is not evidence of anything,
-# and hard-failing on it would block a perfectly good release - which is how a
-# gate gets switched off. It degrades to a message naming Apple's record as
-# authoritative. On the native architecture it still fails hard, because there
-# the check means what it says.
+# An earlier version of this file blamed the architecture, having seen an
+# arm64 binary pass while an x86_64 one failed on the same host. That was
+# wrong - both verify here now. It was propagation the whole time, and the
+# architectures had simply been submitted at different moments.
+#
+# So a failed local check is not evidence the release is bad, only that the
+# ticket has not landed yet. Hard-failing on it would block good releases,
+# which is how a gate ends up switched off. It reports and points at Apple's
+# record instead.
 
 notarize:
 	@test -d $(DIST) || { echo "run 'make dist' first"; exit 1; }
@@ -166,11 +170,9 @@ notarize:
 			exit 1; }; \
 	done
 	@echo "checking the effect, not the submission:"
-	@host=$$(uname -m); \
-	for zip in $(DIST)/*.zip; do \
+	@for zip in $(DIST)/*.zip; do \
 		rm -rf $(DIST)/.verify && mkdir -p $(DIST)/.verify && \
 		unzip -q "$$zip" -d $(DIST)/.verify || exit 1; \
-		arch=$$(file -b $(DIST)/.verify/$(BINARY) | awk '{print $$NF}'); \
 		ok=0; \
 		for attempt in $$(seq 1 $(TICKET_SETTLE_TRIES)); do \
 			if codesign --verify --test-requirement="=notarized" \
@@ -181,12 +183,11 @@ notarize:
 		done; \
 		if [ $$ok -eq 1 ]; then \
 			echo "  $$zip: notarised (verified locally)"; \
-		elif [ "$$arch" != "$$host" ]; then \
-			echo "  $$zip: built for $$arch on a $$host host - cannot be verified here."; \
-			echo "    Apple's record is authoritative; confirm it with:"; \
-			echo "    xcrun notarytool history --keychain-profile $(NOTARY_PROFILE)"; \
 		else \
-			echo "  $$zip: NOT notarised - the release is not usable"; exit 1; \
+			echo "  $$zip: ticket not visible locally yet - this is usually propagation,"; \
+			echo "    not a bad release. Apple's record is authoritative:"; \
+			echo "    xcrun notarytool history --keychain-profile $(NOTARY_PROFILE)"; \
+			echo "    Re-run 'make notarize' later to confirm locally."; \
 		fi; \
 	done
 	@rm -rf $(DIST)/.verify

@@ -83,12 +83,17 @@ than an `exec: not found` at the user's first `apply`.
   every time and teaches you to ignore it. The check that discriminates:
   `codesign --verify --test-requirement="=notarized" <binary>` — exit **0** notarised, exit
   **3** signed but not. Both measured on the same binary.
-- **The local check only works on the host's own architecture.** Measured 2026-08-26 on an
-  arm64 host with *both* archives Accepted by Apple: the arm64 binary verifies 5/5, the x86_64
-  one fails 5/5 — same command, same bytes, deterministic either way. The local ticket lookup
-  does not resolve for a foreign slice. `make notarize` therefore fails hard on the native
-  architecture and, on the other, prints Apple's record as the authority instead. Hard-failing
-  there would block a good release, which is exactly how a release gate ends up disabled.
+- **The local check becomes true on its own schedule, and you cannot predict when.** Measured
+  across one release on 2026-08-26: ninety seconds in one case; still failing after five
+  minutes in another; and an archive that failed 5/5 for more than two hours verified cleanly
+  later with no intervention. Apple's `Accepted` is immediate and authoritative — the local
+  lookup lags it.
+  *An earlier version of this file blamed the architecture, having watched an arm64 binary pass
+  while an x86_64 one failed on the same host. That was wrong: both verify here now. It was
+  propagation, and the two had simply been submitted at different moments.*
+  So `make notarize` reports a failed local check and points at Apple's record rather than
+  failing the release — hard-failing on a lagging ticket blocks good releases, which is exactly
+  how a release gate ends up disabled.
 - **A stuck submission is a real thing; resubmit rather than wait.** One archive sat at
   `In Progress` for 2h56 while an identical-pipeline archive submitted afterwards was Accepted
   in about four minutes. The second submission is what diagnosed it: without a control there is

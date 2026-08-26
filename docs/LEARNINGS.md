@@ -92,6 +92,16 @@ reports the *server's* state and run it. Retrying on a timeout you have not diag
 duplicating work that already succeeded. And when writing such a step, make the recovery path
 a poll, not a longer wait.
 
+**A follow-on, and a correction of my own**: the same episode produced a *second* local check
+that lagged the server — `codesign --test-requirement="=notarized"`, which turns true only once
+Apple's ticket reaches the service it asks. Seeing an arm64 binary pass while an x86_64 one
+failed on the same host, I concluded the check could not resolve a foreign architecture and
+wrote that into the release tooling. It was wrong: both verify now, unchanged. They had simply
+been submitted at different moments, and I had turned a timing difference into an architectural
+law because the two samples I had happened to differ that way. *Two data points that differ in
+several ways at once cannot tell you which difference matters* — vary one thing, or wait and
+re-measure, before writing the explanation down.
+
 ---
 
 ## A name is not an identifier unless the system enforces it
