@@ -234,6 +234,11 @@ Each gets triaged later → a **decision** (ADR), a **build** (PRD), a **milesto
       afterwards — both still **403 + cf-access-aud**. A policy edit is exactly the kind of
       change that could open something quietly, so the guard was re-proven, not assumed.
 
+- [x] **`doctor` coverage guarded** — every check must be breakable, and every red one must
+      carry an error and a hint. Mutation-verified in both directions: a check with no failing
+      path is caught by name, and a failure with an empty hint is caught. This closes the
+      release-checklist item that previously asked for a manual pass.
+
 ## Waiting / blocked
 
 - [ ] Nothing blocked.

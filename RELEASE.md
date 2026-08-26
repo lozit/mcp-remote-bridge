@@ -49,8 +49,10 @@ than an `exec: not found` at the user's first `apply`.
       this tool's whole thesis is "verify the effect, never trust the write". Shipping it on
       the strength of mocks alone would be the exact failure it exists to prevent.
 - [ ] `remove` verified as the exact inverse: after it, the hostname stops answering.
-- [ ] `doctor` gives a useful message on each precondition being absent (uninstall /
-      unauthenticate one deliberately, or fake it).
+- [ ] `doctor` gives a useful message on each precondition being absent. Now enforced by
+      `internal/doctor/coverage_test.go` rather than by hand: it breaks each precondition in
+      turn and requires a red check with an error and a hint, and it fails if a check exists
+      with no way to break it. Re-running it by hand is no longer the way to satisfy this.
 - [ ] CHANGELOG `[Unreleased]` section moved under the new version with today's date.
 - [ ] `README.md` install instructions match what this release actually publishes.
 - [ ] **Capture before shipping** (cf. `CLAUDE.md` → "Capture at checkpoints"): anything

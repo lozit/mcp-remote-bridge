@@ -8,6 +8,13 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- A coverage guard over `doctor`: every check it reports must be able to go red, and every red
+  check must carry an error and a hint. Each check already had its own failure test — this one
+  is aimed at the *next* check, since one added with no failing path is a line that always
+  prints green, and a report of those is a decoration rather than a diagnosis. `portal_server`
+  is exempt on the record, with its reason, rather than skipped quietly.
+
 ### Removed
 - `hostname_resolves` and its probe ([ADR 0010](docs/decisions/0010-drop-the-hostname-resolves-probe.md)).
   It was never wired into the health report, and on a DNS zone with a wildcard record it passed
