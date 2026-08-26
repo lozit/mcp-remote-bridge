@@ -47,17 +47,24 @@ checksum:
 # notarisation, not GPG: the archives downloaded from GitHub Releases in a
 # browser ARE quarantined by Gatekeeper, so they need a ticket even though
 # Homebrew installs (which set no quarantine) would not.
-# `signature` is deliberately NOT set to ${artifact}. Pointing it at the archive
-# itself makes GoReleaser register that archive a SECOND time ("artifact already
-# present in the list"), and it then tries to upload each one twice - which
-# fails with a 404 after half an hour of notarisation. Notarisation produces no
-# new file, so nothing should be registered at all.
+# Two things learned by running this, both the expensive way.
+#
+# `signature` must NOT be ${artifact}: pointing it at the archive registers that
+# archive a SECOND time ("artifact already present in the list"), and GoReleaser
+# then uploads each one twice, failing with a 404 after half an hour of
+# notarisation.
+#
+# And GoReleaser ALWAYS registers the signature artifact — `output: false` does
+# not prevent it — then fails the publish if the file is missing. So the hook
+# must produce one. It writes a notarisation receipt: the submission id, Apple's
+# verdict, the archive's checksum. That is genuinely worth publishing, and it is
+# a better answer than an empty file written to satisfy a tool.
 signs:
   - id: notarize
     artifacts: archive
     cmd: ./scripts/notarize.sh
-    args: ["${artifact}"]
-    output: false
+    args: ["${artifact}", "${signature}"]
+    signature: "${artifact}.notarization.txt"
 
 release:
   github:
