@@ -127,6 +127,37 @@ than an `exec: not found` at the user's first `apply`.
   available. Verified — two rebuilds, no prompt, 1s per call against 30s unsigned. The same
   identity is what a notarised release needs, so this is not a development-only workaround.
 
+## Releasing from another machine
+
+The release is cut locally, so a machine can only publish if it holds the signing identity. The
+notarytool profile and the toolchain are trivially recreated; **the Developer ID private key is
+not** — it is generated locally and cannot be re-downloaded from Apple. A dead laptop with no
+backup means the loss of the ability to sign at all, for this project and every other.
+
+So: **export an encrypted `.p12` and keep it somewhere you would still have after losing the
+machine.** That is the single point of failure in this setup, and it is worth stating that the
+usual phrasing — "the key never leaves the machine" — stops being true the moment you do this.
+The accurate claim is that the key lives only in places the maintainer controls, which is still
+the whole argument against putting it in CI.
+
+To equip a second Mac:
+
+1. **Keychain Access → My Certificates → the *Developer ID Application* identity → Export**, with
+   a passphrase. Import it there. (Re-downloading the certificate from developer.apple.com is not
+   enough: the private key does not come with it, and a certificate without its key signs
+   nothing.)
+2. `xcrun notarytool store-credentials <profile> --apple-id <id> --team-id <team>`, using an
+   app-specific password from account.apple.com. The default profile name is `mcp-remote-bridge`;
+   override it with `NOTARY_PROFILE`.
+3. Xcode command line tools, Go, and `brew install goreleaser`.
+4. `gh auth login`, so `scripts/release.sh` can find a GitHub token.
+
+Apple also allows a *second* Developer ID Application certificate, which avoids moving the first
+key at all. It is not recommended here without checking one thing: macOS grants keychain access
+by binary identity, and this tool reads a secret on every `apply`. Two certificates from the same
+team should satisfy the same designated requirement — but "should" is not "measured", and this is
+exactly the area where this project has already been surprised once.
+
 ## Rollback
 
 - **A bad release**: tags are immutable once published — never re-tag. Ship a new patch.

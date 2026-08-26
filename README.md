@@ -7,30 +7,29 @@
 
 ## Status
 
-**v0.1.0 — first release.** The MVP runs end to end against a real tunnel: `apply` publishes a
-local stdio MCP behind a guarded hostname and probes it all the way to an MCP `tools/list`.
+**v0.2.0.** The MVP runs end to end against a real tunnel: `apply` publishes a local stdio MCP
+behind a guarded hostname and probes it all the way to an MCP `tools/list`.
 
 ## Install
 
-**macOS only.** The tool drives `launchctl` and the macOS keychain; it does not build for any
-other OS, on purpose (see [ADR 0009](docs/decisions/0009-release-is-hand-rolled-and-darwin-only.md)).
+**macOS only** — the tool drives `launchctl` and the macOS keychain. Non-darwin builds fail at
+compile time rather than at your first `apply`.
 
-Download the archive for your architecture from the
+```sh
+brew install --cask lozit/tap/mcp-remote-bridge
+```
+
+Or download the archive for your architecture from the
 [latest release](https://github.com/lozit/mcp-remote-bridge/releases/latest), check it against
-the published `SHA256SUMS`, and put the binary on your `PATH`:
+the published `SHA256SUMS`, and put the binary on your `PATH`.
 
-```
-shasum -a 256 -c SHA256SUMS --ignore-missing
-unzip mcp-remote-bridge_v0.1.0_darwin_arm64.zip
-mv mcp-remote-bridge /usr/local/bin/
-```
+Either way the binary is signed with a Developer ID and notarised by Apple, so no `xattr`
+incantation is needed. One consequence to know: the notarisation ticket cannot be stapled to a
+bare executable — there is no bundle to hold it — so **the first launch on a fresh machine needs
+network** for Gatekeeper to check the ticket online. Afterwards it is cached. Each release also
+publishes a notarisation receipt beside its archives, naming the Apple submission id.
 
-The binaries are signed with a Developer ID and notarised by Apple, so no `xattr` incantation is
-needed. One consequence to know: the notarisation ticket cannot be stapled to a bare executable
-— there is no bundle to put it in — so **the first launch on a fresh machine needs network** for
-Gatekeeper to check the ticket online. After that it is cached.
-
-There is no Homebrew tap in v0.1. Building from source stays supported:
+Building from source stays supported:
 
 ```
 make build                       # compiles and code-signs when a Developer ID is present
@@ -45,7 +44,7 @@ Also: `remove <name>`, `logs <name>`, `restart <name>`.
 Exit codes compose in scripts: `0` all healthy, `1` a precondition failed, `2` at least one
 entry unhealthy. **A green exit means the probes passed, not that a file was written.**
 
-### What it assumes and does not create
+## What it assumes and does not create
 
 - `mcp-proxy` on `PATH`, and `cloudflared` installed **as a service from a tunnel token** (the
   remotely-managed model — see [ADR 0006](docs/decisions/0006-exposer-targets-remotely-managed-tunnels.md))
