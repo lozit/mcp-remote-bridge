@@ -47,12 +47,17 @@ checksum:
 # notarisation, not GPG: the archives downloaded from GitHub Releases in a
 # browser ARE quarantined by Gatekeeper, so they need a ticket even though
 # Homebrew installs (which set no quarantine) would not.
+# `signature` is deliberately NOT set to ${artifact}. Pointing it at the archive
+# itself makes GoReleaser register that archive a SECOND time ("artifact already
+# present in the list"), and it then tries to upload each one twice - which
+# fails with a 404 after half an hour of notarisation. Notarisation produces no
+# new file, so nothing should be registered at all.
 signs:
   - id: notarize
     artifacts: archive
     cmd: ./scripts/notarize.sh
     args: ["${artifact}"]
-    signature: "${artifact}"
+    output: false
 
 release:
   github:

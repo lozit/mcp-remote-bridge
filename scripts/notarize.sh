@@ -24,6 +24,15 @@ WAIT="${NOTARY_WAIT:-45m}"
 TRIES="${TICKET_SETTLE_TRIES:-20}"
 INTERVAL="${TICKET_SETTLE_INTERVAL:-15}"
 
+# Testing the pipeline SHAPE - artefacts registered once, cask written, upload
+# working - should not cost ten minutes of Apple queue per archive. This skips
+# the submission and says so loudly, so a skipped notarisation can never be
+# mistaken for a successful one.
+if [ "${NOTARIZE_SKIP:-}" = "1" ]; then
+  echo "  !! NOTARISATION SKIPPED for $ARCHIVE (NOTARIZE_SKIP=1) - not publishable"
+  exit 0
+fi
+
 echo "notarising $ARCHIVE (up to $WAIT; the upload is quick, Apple's queue is not)"
 if ! xcrun notarytool submit "$ARCHIVE" --keychain-profile "$PROFILE" --wait --timeout "$WAIT"; then
   echo "the wait did not complete. The upload may well have succeeded - check with:" >&2
