@@ -69,16 +69,30 @@ than an `exec: not found` at the user's first `apply`.
   stay out of CI for now.
 - **macOS Gatekeeper — notarised, not worked around.** Teaching users `xattr -d
   com.apple.quarantine` teaches them to disarm the check that protects them; the Developer ID
-  answers it properly. `make notarize` submits each archive and then **verifies the effect**
-  with `spctl --assess`, because a successful submission is not proof that Gatekeeper accepts
-  the result.
+  answers it properly. `make notarize` submits each archive and then **verifies the effect** on
+  the extracted binary, because a successful submission is not proof that the artefact you are
+  about to publish is notarised. See the next two bullets for which check, and which not.
 - **The ticket is not stapled, and cannot be.** Stapling needs a bundle (`.app`, `.dmg`,
   `.pkg`) to write the ticket into; a bare executable has nowhere to put it. Gatekeeper
   resolves the ticket online on first run instead. Consequence to accept: the very first
-  launch on a fresh machine needs network. *Measured 2026-08-25 only as far as `stapler`
-  reaching Apple and returning "Record not found" for an unnotarised binary — whether it can
-  staple a notarised one is unconfirmed until the first real release. Confirm it then, and
-  record the answer here.*
+  launch on a fresh machine needs network. **Confirmed 2026-08-26**: `stapler staple` exits
+  **73** on a binary Apple had just accepted — so this is the format, not a missing ticket.
+- **Verify notarisation with `codesign`, never with `spctl`.** `spctl --assess --type exec`
+  judges app bundles; on a bare CLI it answers `rejected (the code is valid but does not seem
+  to be an app)` whether or not the binary is notarised, so a release gate built on it fails
+  every time and teaches you to ignore it. The check that discriminates:
+  `codesign --verify --test-requirement="=notarized" <binary>` — exit **0** notarised, exit
+  **3** signed but not. Both measured on the same binary.
+- **The local check only works on the host's own architecture.** Measured 2026-08-26 on an
+  arm64 host with *both* archives Accepted by Apple: the arm64 binary verifies 5/5, the x86_64
+  one fails 5/5 — same command, same bytes, deterministic either way. The local ticket lookup
+  does not resolve for a foreign slice. `make notarize` therefore fails hard on the native
+  architecture and, on the other, prints Apple's record as the authority instead. Hard-failing
+  there would block a good release, which is exactly how a release gate ends up disabled.
+- **A stuck submission is a real thing; resubmit rather than wait.** One archive sat at
+  `In Progress` for 2h56 while an identical-pipeline archive submitted afterwards was Accepted
+  in about four minutes. The second submission is what diagnosed it: without a control there is
+  no way to tell a stuck upload from a slow queue. Resubmitting is free and idempotent.
 - **Code signing is not only about Gatekeeper: it is about the keychain prompt.** macOS grants
   keychain access to a binary by IDENTITY, and an unsigned binary's identity changes with its
   contents. So an unsigned release makes every user re-authorise access on **every update**, not

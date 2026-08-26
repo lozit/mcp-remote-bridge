@@ -167,10 +167,19 @@ Each gets triaged later → a **decision** (ADR), a **build** (PRD), a **milesto
 - [x] **Non-darwin builds now fail at compile time.** Found while scoping the release: the tool
       built cleanly for linux and could never run there. It now fails with an identifier that
       names the reason, tested in both directions (linux fails, darwin still builds).
-- [ ] `[supervised]` — **run the first notarisation.** `make notarize` is written and verifies
-      its own effect with `spctl --assess`, but it has never been run: it needs a `notarytool`
-      keychain profile. The open question it will answer is whether a notarised bare executable
-      can be stapled at all — `RELEASE.md` says it cannot and marks that as unconfirmed.
+- [x] **First notarisation done — both archives Accepted, `make notarize` exits 0.** It answered
+      the open question and corrected two things I had written wrong:
+      *(a)* stapling a bare executable is impossible — `stapler` exits **73** on a binary Apple
+      had just accepted, so it is the format, not a missing ticket;
+      *(b)* the verification must be `codesign --test-requirement="=notarized"`, **not**
+      `spctl --assess`, which judges app bundles and answers *"the code is valid but does not
+      seem to be an app"* for a bare CLI whether notarised or not — the gate I first wrote would
+      have failed every release;
+      *(c)* that check only resolves for the host's own architecture (arm64 5/5 pass, x86_64
+      5/5 fail, both Accepted by Apple), so the non-native slice degrades to Apple's record
+      rather than hard-failing.
+      One submission also sat stuck at `In Progress` for 2h56; a control submission Accepted in
+      four minutes is what proved it stuck rather than queued.
 
 ## Operational — the maintainer's own infrastructure, not this codebase
 

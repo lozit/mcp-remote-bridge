@@ -11,7 +11,7 @@ versions follow [Semantic Versioning](https://semver.org/).
 ### Added
 - `--version`, stamped from `git describe` at build time. A plain `go build` still reports
   `dev`, since an unstamped binary is not a release and should not claim a number.
-- `make release` — build both darwin architectures, sign, notarise, checksum. Hand-rolled
+- `make release` — build both darwin architectures, sign, notarise, checksum. Run end to end: both archives notarised by Apple, `make notarize` exits 0. Hand-rolled
   rather than GoReleaser ([ADR 0009](docs/decisions/0009-release-is-hand-rolled-and-darwin-only.md)).
   It refuses a dirty tree and refuses to build without a Developer ID.
 - A compile-time guard against non-darwin builds. The tool compiled cleanly for linux and
