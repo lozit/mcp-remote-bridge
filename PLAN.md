@@ -241,11 +241,10 @@ Each gets triaged later → a **decision** (ADR), a **build** (PRD), a **milesto
 
 ## Waiting / blocked
 
-- [ ] **Back up the Developer ID as an encrypted `.p12`** — maintainer action, not a code task.
-      It is the single point of failure in the release setup: the private key is generated
-      locally and cannot be re-downloaded from Apple, so a dead laptop means losing the ability
-      to sign this project *and every other*. Procedure in `RELEASE.md` → *Releasing from another
-      machine*.
+- [x] **Developer ID backed up as an encrypted `.p12`** (2026-08-27). Deliberately no location
+      recorded here: a repo is the wrong place to describe where a private key lives, and a
+      machine-local path would not survive a clone anyway. Procedure and the reason it matters
+      are in `RELEASE.md` → *Releasing from another machine*.
 
 ## Recently done
 
