@@ -134,9 +134,9 @@ Raw ideas, captured before they're lost (e.g. via `/groundrules:idea`). Not yet 
 Each gets triaged later → a **decision** (ADR), a **build** (PRD), a **milestone**
 (ROADMAP), or dropped.
 
-- [ ] Release toolchain: GoReleaser vs. a hand-rolled build matrix → ADR before Milestone 3
-- [ ] macOS Gatekeeper: notarize, or document the `xattr` workaround? → ADR
-- [ ] Homebrew tap — is there one for v0.1, and where does it live?
+- [x] Release toolchain, Gatekeeper and the Homebrew tap — all three settled by
+      [ADR 0009](docs/decisions/0009-release-is-hand-rolled-and-darwin-only.md) and built:
+      hand-rolled `make release`, notarised (never the `xattr` workaround), no tap in v0.1.
 - [ ] Security contact / GitHub private advisory, before the repo gets any users
 
 - [x] `logs` and `restart` — **done**, verified against a real entry: the pid changed and the
