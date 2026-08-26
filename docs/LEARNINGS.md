@@ -12,6 +12,38 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## `go run` defeats a per-binary firewall; build once to a stable path
+
+**Why**: three API probes in a row timed out while `git` and `xcrun notarytool` reached the
+network from the same shell, seconds apart. Signing the probe changed nothing, and disabling the
+agent sandbox changed nothing either — both were wrong guesses, made because the only evidence
+was a timeout.
+
+The cause was Little Snitch. `go run` compiles to a temporary path whose **basename is always
+`main`** and whose **checksum changes every run**, so the filter did not see an unknown program:
+it saw a *known* program that had been modified, and raised "The program has been modified!"
+every single time. Nobody was at the screen, the dialog was never answered, and the connection
+died as a timeout rather than a refusal.
+
+The fix is not to sign and not to ask for more permission — it is to stop moving:
+
+```sh
+go build -o <stable-path>/tool main.go   # once
+<stable-path>/tool                       # many times, same checksum, one approval
+```
+
+**When to apply**: whenever a program you *just compiled* cannot reach the network while system
+binaries can. Check for a per-application filter (Little Snitch, LuLu, a VPN's split tunnelling)
+before blaming DNS, TLS, IPv6 or a sandbox — and prefer `go build` to a fixed path over `go run`
+for anything that opens a socket, on any machine that might have one.
+
+**The pattern worth carrying**: this is the third time in this project that an unanswered
+authorisation dialog surfaced in code as a network timeout — the keychain prompt, `notarytool
+--wait`, and now this. *An invisible prompt and a dead network are indistinguishable from
+inside the process.* When a timeout makes no sense, look for a dialog nobody answered.
+
+---
+
 ## A dead client says nothing about the server it was waiting on
 
 **Why**: `make release` failed on `HTTPClientError.connectTimeout` from `notarytool submit

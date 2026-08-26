@@ -183,9 +183,10 @@ Each gets triaged later → a **decision** (ADR), a **build** (PRD), a **milesto
 
 ## Operational — the maintainer's own infrastructure, not this codebase
 
-- [ ] **Delete the duplicate service token** `75f79582b4962feb23f68f3856561216.access`. Two tokens
-      are named `mcp-remote-bridge`; the stored secret pairs with `9733deae…` (verified: `200`
-      against a guarded hostname, against `403` for the other).
+- [x] **Duplicate service token deleted** (`75f79582…`), and verified in both directions: it is
+      gone from the list, and `freestyle-mcp` still answers **200** to the token the bridge
+      actually uses (`9733deae…`). Deleting a credential is only safe if you prove the surviving
+      path still works.
 - [x] The Exposer creates the Access application on the hostname, reusing the policy named by
       `[infra] access_policy_id`. Guards **before** publishing and unguards **last** — both
       orderings mutation-tested, since they are the security property, not the API calls.
@@ -217,15 +218,10 @@ Each gets triaged later → a **decision** (ADR), a **build** (PRD), a **milesto
       an MCP client authenticated as the Portal's caller. Parked deliberately rather than
       dropped: it becomes feasible the day the Portal API opens to tokens.
 
-- [ ] `[supervised]` — **decide what to do about the `Policy` policy** (id `bc11074d…`, attached
-      to `mcp-freestyle`). It is the only one of the seven with `decision: allow`; the other six,
-      including every one this tool attaches, use `decision: non_identity` — the "Service Auth"
-      decision, which is what skips the identity flow for a service token. All seven have the
-      same `include: any_valid_service_token`, so the difference is the decision alone. It is a
-      leftover from the incident remediation. Not proven to be the cause of the "That account
-      does not have access." screen seen during that debug, but the shapes match. Per ADR 0001's
-      own doctrine — refuse on proof, warn on ambiguity — this is ambiguity: worth aligning by
-      hand, not worth a refusal in code.
+- [x] **`Policy` (`bc11074d…`) aligned to `decision: non_identity`**, like the other six. Read
+      back after the write to confirm it took, and the two hostnames re-probed unauthenticated
+      afterwards — both still **403 + cf-access-aud**. A policy edit is exactly the kind of
+      change that could open something quietly, so the guard was re-proven, not assumed.
 
 ## Waiting / blocked
 
