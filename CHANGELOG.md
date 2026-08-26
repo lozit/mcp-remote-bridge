@@ -8,6 +8,10 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-26
+
+First release published through Homebrew: `brew install --cask lozit/tap/mcp-remote-bridge`.
+
 ### Changed
 - The release is now cut with **GoReleaser**, run locally
   ([ADR 0011](docs/decisions/0011-goreleaser-and-a-homebrew-tap.md)), and publishes a **Homebrew
