@@ -137,7 +137,14 @@ Each gets triaged later → a **decision** (ADR), a **build** (PRD), a **milesto
 - [x] Release toolchain, Gatekeeper and the Homebrew tap — all three settled by
       [ADR 0009](docs/decisions/0009-release-is-hand-rolled-and-darwin-only.md) and built:
       hand-rolled `make release`, notarised (never the `xattr` workaround), no tap in v0.1.
-- [ ] Security contact / GitHub private advisory, before the repo gets any users
+- [x] **Security contact — done**, and it turned up a problem worth naming. GitHub looks for
+      `SECURITY.md` in `.github/`, the root **and `docs/`**, so the repository was already
+      publishing `docs/SECURITY.md` as its security policy: a design document, banner reading
+      *"Status: pre-code"*, and no way to report anything. The reporting policy now lives in
+      `.github/SECURITY.md` (which takes precedence), states scope and non-scope, and promises
+      an acknowledgement in 7 days rather than a fix window one maintainer cannot honour.
+      Private vulnerability reporting is enabled — verified `{"enabled":true}` on the API, not
+      inferred from the write. `docs/SECURITY.md` now says what it is and points at the policy.
 
 - [x] `logs` and `restart` — **done**, verified against a real entry: the pid changed and the
       ingress was untouched. `restart` reuses the ServiceManager's Remove + Ensure rather than a

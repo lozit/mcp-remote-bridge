@@ -9,6 +9,10 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- A security policy at `.github/SECURITY.md`, and private vulnerability reporting enabled on the
+  repository. GitHub had been surfacing `docs/SECURITY.md` — a design document marked *pre-code*
+  with no reporting instructions — as the project's security policy, because GitHub also looks in
+  `docs/`.
 - `--version`, stamped from `git describe` at build time. A plain `go build` still reports
   `dev`, since an unstamped binary is not a release and should not claim a number.
 - `make release` — build both darwin architectures, sign, notarise, checksum. Run end to end: both archives notarised by Apple, `make notarize` exits 0. Hand-rolled

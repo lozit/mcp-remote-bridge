@@ -7,8 +7,14 @@ For the **why** behind structural decisions → see `docs/decisions/`.
 The normative rule is rule 3 of [`SPEC-primitive.md`](SPEC-primitive.md); this file is the
 operational reading of it.
 
-> **Status: pre-code.** These are commitments the implementation must satisfy, not
-> properties yet observed in code. Turn each into a test.
+> **Reporting a vulnerability? Not here.** This is the design document. The reporting policy is
+> [`.github/SECURITY.md`](../.github/SECURITY.md) — or the **Report a vulnerability** button on
+> the repository's Security tab.
+
+> **Status: implemented and tested.** These were commitments before the code existed; each is now
+> enforced by a test, including a cross-cutting one that builds every artefact the tool produces
+> and asserts the secret value appears in exactly one of them
+> (`internal/launcher/secrets_invariant_test.go`).
 
 ## Threat model, briefly
 
