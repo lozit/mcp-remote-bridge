@@ -7,10 +7,30 @@
 
 ## Status
 
-**Working, unreleased.** The MVP runs end to end against a real tunnel: `apply` publishes a
+**v0.1.0 — first release.** The MVP runs end to end against a real tunnel: `apply` publishes a
 local stdio MCP behind a guarded hostname and probes it all the way to an MCP `tools/list`.
 
-Not yet released — no signed binaries, no Homebrew tap. Build it yourself for now.
+## Install
+
+**macOS only.** The tool drives `launchctl` and the macOS keychain; it does not build for any
+other OS, on purpose (see [ADR 0009](docs/decisions/0009-release-is-hand-rolled-and-darwin-only.md)).
+
+Download the archive for your architecture from the
+[latest release](https://github.com/lozit/mcp-remote-bridge/releases/latest), check it against
+the published `SHA256SUMS`, and put the binary on your `PATH`:
+
+```
+shasum -a 256 -c SHA256SUMS --ignore-missing
+unzip mcp-remote-bridge_v0.1.0_darwin_arm64.zip
+mv mcp-remote-bridge /usr/local/bin/
+```
+
+The binaries are signed with a Developer ID and notarised by Apple, so no `xattr` incantation is
+needed. One consequence to know: the notarisation ticket cannot be stapled to a bare executable
+— there is no bundle to put it in — so **the first launch on a fresh machine needs network** for
+Gatekeeper to check the ticket online. After that it is cached.
+
+There is no Homebrew tap in v0.1. Building from source stays supported:
 
 ```
 make build                       # compiles and code-signs when a Developer ID is present

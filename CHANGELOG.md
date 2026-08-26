@@ -8,6 +8,11 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-08-26
+
+First release. macOS only, notarised, no Homebrew tap
+([ADR 0009](docs/decisions/0009-release-is-hand-rolled-and-darwin-only.md)).
+
 ### Added
 - A security policy at `.github/SECURITY.md`, and private vulnerability reporting enabled on the
   repository. GitHub had been surfacing `docs/SECURITY.md` — a design document marked *pre-code*
@@ -130,9 +135,3 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ### Security
 
-<!--
-## [0.1.0] - YYYY-MM-DD
-
-### Added
-- ...
--->
