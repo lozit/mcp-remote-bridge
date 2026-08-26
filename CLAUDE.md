@@ -50,6 +50,14 @@ re-authorised on every rebuild — and the symptom is a **network timeout**, not
 the call blocks on a dialog the process cannot see. Signed: 1s. Unsigned: 30s and a
 prompt.</important>
 
+<important if="about to write a check, a gate, or an explanation of a failure">Falsify the
+instrument before trusting it. Run the new check against a case that MUST fail — a mutation, a
+negative control, a deliberately broken input — and watch it go red. A check you have never
+seen fail may be blind, and it converts an unknown into a false certainty. Same for a diagnosis:
+two runs differing in several ways at once identify nothing; vary one thing or re-measure before
+writing the explanation down. Measured on this project: every gate mutation-tested was correct,
+every one that was not, was wrong (see `docs/AGENT-EVALS.md`, 2026-08-27).</important>
+
 <important if="about to claim something works">A green `go test ./...` proves the mocks
 pass, not that the tool works. Every seam (`ServiceManager`, `Exposer`, `SecretSource`) is
 mocked in unit tests, and everything that actually breaks — launchd semantics, DNS
