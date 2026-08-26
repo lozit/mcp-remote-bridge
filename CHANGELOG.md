@@ -8,6 +8,14 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Removed
+- `hostname_resolves` and its probe ([ADR 0010](docs/decisions/0010-drop-the-hostname-resolves-probe.md)).
+  It was never wired into the health report, and on a DNS zone with a wildcard record it passed
+  for any name — a check that cannot fail. The failure it was written to distinguish, a hostname
+  with no record at all, already surfaces in `hostname_responds` as `no such host`. The ADR
+  records the design that would make it honest, a control lookup against a name known not to
+  exist, in case it ever earns a caller.
+
 ## [0.1.0] - 2026-08-26
 
 First release. macOS only, notarised, no Homebrew tap
@@ -21,6 +29,8 @@ Access application and no tunnel ingress behind.
 
 **Known limitation**: on a DNS zone carrying a wildcard record, the `hostname_resolves` check
 passes for any name and so proves nothing. The deep `hostname_responds` probe is unaffected.
+The check was never wired into the health report, and has since been removed outright
+([ADR 0010](docs/decisions/0010-drop-the-hostname-resolves-probe.md)) — see `[Unreleased]`.
 
 ### Added
 - A security policy at `.github/SECURITY.md`, and private vulnerability reporting enabled on the

@@ -57,7 +57,7 @@ this primitive once for itself instead of once per MCP.
 ## H
 
 **`HealthReport`** — the verdict for one entry, carrying the evidence behind it:
-`proxy_listening`, `mcp_responds`, `hostname_resolves`, `hostname_responds`,
+`proxy_listening`, `mcp_responds`, `hostname_responds`,
 `service_loaded`, plus the derived `healthy: bool`. On failure it names *which* check failed
 and where. It is a record of probes run, never a record of files written.
 

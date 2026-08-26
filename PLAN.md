@@ -14,11 +14,11 @@ seams plus `Entry` / `HealthReport` are declared with stubs returning
 
 ## In progress
 
-- [ ] **`ProbeHostnameResolves` is a tautology on a wildcard zone** — found by the v0.1.0
-      release check, recorded in `docs/LEARNINGS.md`. Shipped as-is in v0.1.0 knowingly: the
-      deep probe (`hostname_responds`) is what actually establishes the hostname works, and
-      fixing this properly means giving the probe a way to tell the tool's own record apart
-      from a wildcard — which changes its contract and therefore needs an ADR, not a patch.
+- [x] **`hostname_resolves` removed** — [ADR 0010](docs/decisions/0010-drop-the-hostname-resolves-probe.md),
+      accepted. Scoping the fix found two things that changed the decision: the probe had **no
+      caller** outside its own test, and the failure it existed to distinguish already surfaces
+      in `hostname_responds` as `no such host`. So it was deleted rather than repaired. The ADR
+      keeps the control-lookup design in case it ever earns a caller.
 
 ## Up next
 

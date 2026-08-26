@@ -136,9 +136,15 @@ worked example: a check is not verified because it sounds thorough.
 
 Per entry, a verdict with the evidence behind it: `proxy_listening`, `mcp_responds`
 (the deep probe — see ADR 0003; **not** `mcp_initialize`, which proves nothing),
-`hostname_resolves`, `hostname_responds`, `service_loaded` — each a checked fact, plus the
+`hostname_responds`, `service_loaded` — each a checked fact, plus the
 single derived `healthy: bool`. On failure it names *which* check failed and where, so a red
 result is actionable.
+
+> An earlier version of this spec listed a fifth check, `hostname_resolves`. It was removed by
+> [ADR 0010](decisions/0010-drop-the-hostname-resolves-probe.md): on a DNS zone with a wildcard
+> record it passed for any name, and the failure it was meant to distinguish — a hostname with
+> no record at all — already surfaces in `hostname_responds` as `no such host`. **Four checks,
+> all of which can fail.**
 
 ## Failure modes handled explicitly
 

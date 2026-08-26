@@ -28,7 +28,6 @@ func TestHealthyRequiresEveryCheck(t *testing.T) {
 			checks: []Check{
 				{Name: CheckServiceLoaded, OK: true},
 				{Name: CheckProxyListening, OK: true},
-				{Name: CheckHostnameResolves, OK: true},
 				{Name: CheckHostnameResponds, OK: true},
 				{Name: CheckMCPResponds, OK: false},
 			},

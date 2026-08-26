@@ -68,7 +68,7 @@ domain, ports and secrets are all inputs.
 - `ensure_exposed` and `remove_exposed` are **idempotent inverses**: a second `apply` on a
   healthy entry is a no-op; an `apply` on a drifted entry repairs only what drifted.
 - `HealthReport` carries **checked facts**, not claims — `proxy_listening`,
-  `mcp_responds`, `hostname_resolves`, `hostname_responds`, `service_loaded`, plus the
+  `mcp_responds`, `hostname_responds`, `service_loaded`, plus the
   single derived `healthy`. A red result names *which* check failed and where.
 - The deep probe catches the subtle trap: **proxy up, MCP inside it dead**.
 - **No secret value** appears in `config.toml`, in a launchd plist, in `argv`, in the

@@ -10,8 +10,6 @@ const (
 	CheckServiceLoaded CheckName = "service_loaded"
 	// CheckProxyListening reports whether something answers on 127.0.0.1:PORT.
 	CheckProxyListening CheckName = "proxy_listening"
-	// CheckHostnameResolves reports whether the public hostname resolves.
-	CheckHostnameResolves CheckName = "hostname_resolves"
 	// CheckHostnameResponds reports whether the public hostname answers a request.
 	CheckHostnameResponds CheckName = "hostname_responds"
 	// CheckMCPResponds is the deep probe: a JSON-RPC call that must carry data

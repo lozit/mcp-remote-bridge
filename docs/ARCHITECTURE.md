@@ -63,7 +63,7 @@ and logs at a known path.
 ### `HealthReport` — the verification component
 
 Not a status struct: a **record of probes actually run**. `proxy_listening`,
-`mcp_responds`, `hostname_resolves`, `hostname_responds`, `service_loaded`, plus the
+`mcp_responds`, `hostname_responds`, `service_loaded`, plus the
 single derived `healthy: bool`.
 
 `mcp_responds` is the load-bearing one. The proxy can be listening while the MCP inside it is
