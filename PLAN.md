@@ -14,6 +14,28 @@ seams plus `Entry` / `HealthReport` are declared with stubs returning
 
 ## In progress
 
+**Linux support** — [ADR 0012](docs/decisions/0012-linux-support.md), accepted. The seams hold:
+`Exposer` needs no work at all (it speaks only to the Cloudflare API), and `ServiceSpec` maps
+onto a systemd unit without changing a contract.
+
+- [x] `internal/systemd/unit.go` — unit rendering, the direct analogue of `plist.go`. Fully
+      testable from a Mac, so it was done first and mutation-verified: removing the escaping
+      or the quoting each makes a test fail by name.
+- [ ] `internal/systemd/manager.go` — `systemctl --user` (enable/start/stop/disable, and a
+      status read that derives Running from a pid rather than from a word, as launchd's does).
+      **Not verifiable from a Mac**: unit tests here would prove only that the mocks agree with
+      themselves.
+- [ ] The Linux `SecretSource`s: `systemd-creds:` (headless default) and `secret-tool:`
+      (desktop). The reference syntax carries its backend so a config read on the wrong machine
+      fails clearly instead of resolving to something unintended.
+- [ ] `doctor` per OS, including `loginctl show-user --property=Linger` — without lingering a
+      user service dies with the last session, so a service installed over SSH stops at
+      disconnect and looks healthy again at the next login.
+- [ ] Relax the compile guard from `!darwin` to `!darwin && !linux`, and follow it in the test
+      that asserts a non-darwin build is refused.
+- [ ] Release matrix: linux tarballs, no signing, no cask. `go install` becomes meaningful.
+- [ ] **Run it on a real Linux host.** Nothing above is believed until this happens.
+
 - [x] **`hostname_resolves` removed** — [ADR 0010](docs/decisions/0010-drop-the-hostname-resolves-probe.md),
       accepted. Scoping the fix found two things that changed the decision: the probe had **no
       caller** outside its own test, and the failure it existed to distinguish already surfaces
