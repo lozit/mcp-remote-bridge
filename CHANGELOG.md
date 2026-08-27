@@ -11,7 +11,9 @@ versions follow [Semantic Versioning](https://semver.org/).
 ### Added
 - The beginning of Linux support ([ADR 0012](docs/decisions/0012-linux-support.md)): systemd
   unit rendering and a `ServiceManager` over `systemctl --user`, the counterparts of the launchd
-  plist and manager. It carries no `Environment=`,
+  plist and manager; a secret-reference router; and the two Linux secret backends
+  (`systemd-creds:` for a headless host, `secret-tool:` for a desktop). Their command lines are
+  written but **not yet verified on a Linux host**. It carries no `Environment=`,
   `EnvironmentFile=` or `SetCredential=` — unit files are world-readable exactly as plists are,
   and secrets are still resolved at launch. Nothing is wired in yet; the tool remains
   darwin-only until a systemd `ServiceManager` and a Linux `SecretSource` exist.

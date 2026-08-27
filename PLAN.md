@@ -29,9 +29,17 @@ onto a systemd unit without changing a contract.
       previous one *and reports success*), and Running derives from a pid rather than from
       `ActiveState`. **Still needs a Linux host**: nothing here proves a service actually
       starts.
-- [ ] The Linux `SecretSource`s: `systemd-creds:` (headless default) and `secret-tool:`
-      (desktop). The reference syntax carries its backend so a config read on the wrong machine
-      fails clearly instead of resolving to something unintended.
+- [x] **Reference routing** — `internal/secrets`. A reference carries its own backend, and the
+      router never guesses: a bare name is refused rather than inferred, and a Linux reference
+      on a macOS build says *"this config was written for another machine"* rather than
+      *"unknown prefix"*, which reads like a typo. Fully tested; nothing about it needs Linux.
+- [~] **The two Linux backends** — written, logic tested, **command lines UNVERIFIED**. Neither
+      `systemd-creds` nor `secret-tool` has ever been run. Each keeps its argv in one function
+      pinned by a test, so confirming it on a Linux host is a one-line change with a test that
+      names exactly what moved. Covered and mutation-verified around them: the value travels on
+      stdin and never in an argv, a credential name cannot escape its directory, an empty
+      lookup is an error rather than an empty secret, and a locked keyring is not reported as a
+      missing one.
 - [ ] `doctor` per OS, including `loginctl show-user --property=Linger` — without lingering a
       user service dies with the last session, so a service installed over SSH stops at
       disconnect and looks healthy again at the next login.
