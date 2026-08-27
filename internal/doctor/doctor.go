@@ -119,7 +119,21 @@ func binaryPresent(deps Deps, name, hint string) Check {
 func connectorRunning(deps Deps) Check {
 	c := Check{
 		Name: "tunnel_connector",
-		Hint: "the connector is a precondition: install it as a service from the tunnel's token, then check the dashboard shows it Running",
+		// The hint prints the command rather than describing it. This is the one
+		// precondition the tool deliberately does not fix — installing the
+		// connector means a root LaunchDaemon, and this tool writes only
+		// per-user LaunchAgents — so the least it can do is not make the reader
+		// go and look it up.
+		//
+		// A tunnel accepts SEVERAL connectors at once; that is how Cloudflare
+		// does high availability. So moving a tunnel between machines needs no
+		// downtime window: install on the new host, confirm the dashboard lists
+		// both, then remove the old one.
+		Hint: "install the connector as a service from the tunnel's token:\n" +
+			"  cloudflared service install <TUNNEL_TOKEN>\n" +
+			"the token comes from the tunnel's page in the dashboard, not from api_token.\n" +
+			"Then check the dashboard shows the connector Running. A tunnel accepts several\n" +
+			"connectors at once, so you can install on a new machine before removing the old.",
 	}
 	if !deps.processMatches("cloudflared tunnel run") {
 		c.Err = fmt.Errorf("no running cloudflared connector found")
@@ -227,7 +241,17 @@ func Render(checks []Check) string {
 			fmt.Fprintf(&b, "      %s\n", c.Err)
 		}
 		if !c.OK && c.Hint != "" {
-			fmt.Fprintf(&b, "      → %s\n", c.Hint)
+			// A hint may span several lines when the next step is a command
+			// worth printing verbatim. Indentation belongs here rather than
+			// inside the hint text: a hint that carries its own leading spaces
+			// renders ragged the moment this prefix changes.
+			for i, line := range strings.Split(c.Hint, "\n") {
+				marker := "→"
+				if i > 0 {
+					marker = " "
+				}
+				fmt.Fprintf(&b, "      %s %s\n", marker, line)
+			}
 		}
 	}
 	return b.String()

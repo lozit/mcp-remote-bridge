@@ -47,7 +47,11 @@ entry unhealthy. **A green exit means the probes passed, not that a file was wri
 ## What it assumes and does not create
 
 - `mcp-proxy` on `PATH`, and `cloudflared` installed **as a service from a tunnel token** (the
-  remotely-managed model — see [ADR 0006](docs/decisions/0006-exposer-targets-remotely-managed-tunnels.md))
+  remotely-managed model — see [ADR 0006](docs/decisions/0006-exposer-targets-remotely-managed-tunnels.md)).
+  The tool adds hostnames to a tunnel; it does not run the tunnel. Installing the connector means
+  a root LaunchDaemon, and this tool writes only per-user LaunchAgents — so `doctor` prints the
+  command rather than running it. A tunnel accepts several connectors at once, so moving one
+  between machines needs no downtime: install on the new host, confirm both, remove the old
 - a Cloudflare API token, scoped to `Zone:DNS:Edit`, `Account:Cloudflare Tunnel:Edit` and Access
   edit rights, stored with `set-secret`
 - if an MCP Portal fronts your hostnames, its server entries stay manual: that API is closed to

@@ -8,6 +8,15 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- `doctor` now prints the exact command when the tunnel connector is missing, instead of
+  describing it, and says that a tunnel accepts **several connectors at once** — without which
+  moving a tunnel between machines looks like it needs a downtime window. Installing the
+  connector stays deliberately outside this tool's scope: it means a root LaunchDaemon, and this
+  tool writes only per-user LaunchAgents.
+- `Render` indents every line of a multi-line hint. Indentation belongs there rather than inside
+  the hint text, which rendered ragged the first time round.
+
 ## [0.2.0] - 2026-08-26
 
 First release published through Homebrew: `brew install --cask lozit/tap/mcp-remote-bridge`.
