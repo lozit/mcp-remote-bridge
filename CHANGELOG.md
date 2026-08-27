@@ -8,6 +8,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-08-27
+
 ### Changed
 - `doctor` now prints the exact command when the tunnel connector is missing, instead of
   describing it, and says that a tunnel accepts **several connectors at once** — without which
