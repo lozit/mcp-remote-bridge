@@ -21,10 +21,14 @@ onto a systemd unit without changing a contract.
 - [x] `internal/systemd/unit.go` — unit rendering, the direct analogue of `plist.go`. Fully
       testable from a Mac, so it was done first and mutation-verified: removing the escaping
       or the quoting each makes a test fail by name.
-- [ ] `internal/systemd/manager.go` — `systemctl --user` (enable/start/stop/disable, and a
-      status read that derives Running from a pid rather than from a word, as launchd's does).
-      **Not verifiable from a Mac**: unit tests here would prove only that the mocks agree with
-      themselves.
+- [~] `internal/systemd/manager.go` — **written, logic tested, behaviour unproven.** The parts
+      that are genuinely easy to get wrong and invisible until production are covered by tests
+      with a fake runner, and mutation-verified: `LoadState=not-found` distinguishes an absent
+      unit from a broken user manager (systemctl exits 0 for both otherwise), a changed
+      definition triggers `daemon-reload` (systemd caches units, and without it starts the
+      previous one *and reports success*), and Running derives from a pid rather than from
+      `ActiveState`. **Still needs a Linux host**: nothing here proves a service actually
+      starts.
 - [ ] The Linux `SecretSource`s: `systemd-creds:` (headless default) and `secret-tool:`
       (desktop). The reference syntax carries its backend so a config read on the wrong machine
       fails clearly instead of resolving to something unintended.
